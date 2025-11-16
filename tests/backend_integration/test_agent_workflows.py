@@ -7,7 +7,6 @@ and Codex backends, including single/multiple agent execution, context handling,
 error scenarios, and cross-backend compatibility.
 """
 
-import json
 import os
 import subprocess
 from unittest.mock import Mock
@@ -198,7 +197,7 @@ class TestClaudeAgentWorkflows:
             backend = ClaudeCodeAgentBackend()
 
             context = {"files": ["main.py", "utils.py"], "priority": "high"}
-            result = backend.spawn_agent("zen-architect", "Refactor the code", context=context)
+            backend.spawn_agent("zen-architect", "Refactor the code", context=context)
 
             # Verify context was included in the task
             call_args = mock_claude_sdk.query.call_args[0][0]
@@ -238,13 +237,12 @@ class TestCodexAgentWorkflows:
 
             # Verify subprocess was called correctly
             mock_codex_exec_success.assert_called_once()
-            call_args = mock_codex_exec_success.call_args[0][0]
+            cmd = mock_codex_exec_success.call_args[0][0]
+            kwargs = mock_codex_exec_success.call_args[1]
 
-            assert call_args[0] == "codex"
-            assert call_args[1] == "exec"
-            assert "--context-file=.codex/agents/bug-hunter.md" in call_args
-            assert "--task=Find bugs in the code" in call_args
-            assert "--profile=development" in call_args
+            assert cmd[-2:] == ["exec", "-"]
+            assert kwargs["text"] is True
+            assert "name: bug-hunter" in kwargs["input"]
 
             # Verify response structure
             assert result["success"] is True
@@ -261,9 +259,8 @@ class TestCodexAgentWorkflows:
 
             result = backend.spawn_agent("test-coverage", "Run test coverage")
 
-            # Verify profile was used
-            call_args = mock_codex_exec_success.call_args[0][0]
-            assert "--profile=development" in call_args
+            # Profile should be captured in metadata for analytics
+            assert result["metadata"]["profile"] == "development"
 
     def test_codex_spawn_with_context_data(self, integration_test_project, mock_codex_exec_success, create_test_agents):
         """Test spawning agent with context data."""
@@ -271,14 +268,12 @@ class TestCodexAgentWorkflows:
             backend = CodexAgentBackend()
 
             context = {"files": ["test_main.py"], "options": {"verbose": True}}
-            result = backend.spawn_agent("bug-hunter", "Analyze tests", context=context)
+            backend.spawn_agent("bug-hunter", "Analyze tests", context=context)
 
-            # Verify context data was passed
-            call_args = mock_codex_exec_success.call_args[0][0]
-            context_arg_index = call_args.index("--context-data") + 1
-            context_json = call_args[context_arg_index]
-            parsed_context = json.loads(context_json)
-            assert parsed_context == context
+            # Combined prompt sent via stdin should include context JSON
+            kwargs = mock_codex_exec_success.call_args[1]
+            assert '"test_main.py"' in kwargs["input"]
+            assert '"verbose": true' in kwargs["input"]
 
     def test_codex_agent_execution_failure(self, integration_test_project, mock_codex_exec_failure, create_test_agents):
         """Test handling of agent execution failure."""
@@ -307,7 +302,7 @@ class TestAgentConversionWorkflows:
         """Test that converted Claude agent works with Codex."""
         # First convert a Claude agent to Codex format
         claude_agents_dir = integration_test_project / ".claude" / "agents"
-        claude_agents_dir.mkdir(parents=True)
+        claude_agents_dir.mkdir(parents=True, exist_ok=True)
 
         claude_agent = claude_agents_dir / "refactor-agent.md"
         claude_agent.write_text("""
@@ -324,7 +319,7 @@ Helps with code refactoring tasks.
 
         # Simulate conversion (create Codex version)
         codex_agents_dir = integration_test_project / ".codex" / "agents"
-        codex_agents_dir.mkdir(parents=True)
+        codex_agents_dir.mkdir(parents=True, exist_ok=True)
 
         codex_agent = codex_agents_dir / "refactor-agent.md"
         codex_agent.write_text("""
@@ -349,7 +344,7 @@ Helps with code refactoring tasks.
 
             # Verify agent executed successfully
             assert result["success"] is True
-            assert "refactor-agent" in mock_codex_exec_success.call_args[0][0]
+            assert "refactor-agent" in mock_codex_exec_success.call_args[1]["input"]
 
     def test_agent_list_consistency(self, integration_test_project, create_test_agents):
         """Test that agent lists are consistent across backends."""
