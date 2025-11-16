@@ -164,7 +164,7 @@ if [ "$SHOW_HELP" = true ]; then
     echo ""
     echo "Options:"
     echo "  --profile <name>       Select Codex profile (development, ci, review) [default: development]"
-    echo "  --resume <session-id>  Resume a previous session by ID"
+    echo "  --resume <session-id>  Restore memory state, rebuild session_context.md, and prep manual replay via scripts/codex_prompt.py | codex exec - (no automatic replay)"
     echo "  --no-init              Skip pre-session initialization"
     echo "  --no-cleanup           Skip post-session cleanup"
     echo "  --no-notifications     Disable session notifications"
@@ -577,7 +577,7 @@ echo -e "${BLUE}║${NC}  ${YELLOW}• Profile:${NC} $PROFILE                   
 if [ -n "$SESSION_RESUME" ]; then
     echo -e "${BLUE}║${NC}  ${YELLOW}• Resumed Session:${NC} $SESSION_RESUME                          ${BLUE}║${NC}"
     if [ -f ".codex/session_context.md" ]; then
-        echo -e "${BLUE}║${NC}  ${YELLOW}• Resume Context:${NC} Loaded from session_context.md         ${BLUE}║${NC}"
+        echo -e "${BLUE}║${NC}  ${YELLOW}• Resume Context:${NC} session_context.md regenerated for manual replay via scripts/codex_prompt.py | codex exec -${BLUE}║${NC}"
     fi
 fi
 echo -e "${BLUE}║${NC}  ${YELLOW}• Memory System:${NC} ${MEMORY_SYSTEM_ENABLED}                     ${BLUE}║${NC}"
@@ -607,7 +607,7 @@ CODEX_CMD=("codex" "--profile" "$PROFILE")
 
 # Note about legacy resume context
 if [ -n "$SESSION_RESUME" ] && [ -f ".codex/session_context.md" ]; then
-    print_warning "Resume context saved at .codex/session_context.md. Use scripts/codex_prompt.py to bundle it with an agent definition, then pipe the output into 'codex exec -' if you need to replay it."
+    print_warning "Resume rebuilt .codex/session_context.md. Replay manually with: python scripts/codex_prompt.py --agent <agent>.md --context .codex/session_context.md | codex exec - (the wrapper does not auto-replay the conversation)."
 fi
 
 # Pass through remaining arguments
