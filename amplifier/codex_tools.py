@@ -7,10 +7,15 @@ This module provides a clean import path for agent context bridge utilities.
 import sys
 from pathlib import Path
 
-# Add .codex/tools to path
+# Add .codex/tools to path for agent context utilities
 codex_tools_path = Path(__file__).parent.parent / ".codex" / "tools"
 if str(codex_tools_path) not in sys.path:
     sys.path.insert(0, str(codex_tools_path))
+
+# Add .codex root so MCP servers can be imported as packages
+codex_root_path = Path(__file__).parent.parent / ".codex"
+if str(codex_root_path) not in sys.path:
+    sys.path.insert(0, str(codex_root_path))
 
 # Import and re-export functions
 try:
@@ -20,6 +25,7 @@ try:
     from agent_context_bridge import extract_agent_result
     from agent_context_bridge import inject_context_to_agent
     from agent_context_bridge import serialize_context
+    from mcp_servers.agent_analytics.server import AgentAnalyticsServer
 
     __all__ = [
         "AgentContextBridge",
@@ -28,6 +34,7 @@ try:
         "extract_agent_result",
         "cleanup_context_files",
         "create_combined_context_file",
+        "AgentAnalyticsServer",
     ]
 except ImportError as e:
     # Raise ImportError with helpful message

@@ -21,6 +21,7 @@ from typing import Any
 import yaml
 
 # Import agent context bridge utilities
+from amplifier.codex_tools import AgentAnalyticsServer
 from amplifier.codex_tools import create_combined_context_file
 from amplifier.codex_tools import extract_agent_result
 from amplifier.codex_tools import serialize_context
@@ -306,47 +307,30 @@ class ClaudeCodeAgentBackend(AgentBackend):
         analytics_flag = os.getenv("AMPLIFIER_ENABLE_AGENT_ANALYTICS", "").strip().lower()
         if analytics_flag not in {"1", "true", "yes"}:
             return
+        if AgentAnalyticsServer is None:
+            logger.debug("Agent analytics server unavailable; skipping logging")
+            return
 
         try:
-            # Try to invoke the agent analytics MCP server
-            import subprocess
-            import sys
+            # Create async helper to log execution
+            async def log_execution():
+                server = AgentAnalyticsServer(None)  # MCP instance not needed for direct logging
+                return await server.log_agent_execution(
+                    agent_name=agent_name,
+                    task=task,
+                    duration_seconds=duration_seconds,
+                    success=success,
+                    result_summary=result_summary,
+                    context_tokens=context_tokens,
+                    error_message=error_message,
+                )
 
-            # Escape single quotes in strings for shell safety
-            safe_task = task.replace("'", "'\"'\"'")
-            safe_result = result_summary.replace("'", "'\"'\"'") if result_summary else ""
-            safe_error = error_message.replace("'", "'\"'\"'") if error_message else ""
-
-            # Build the Python command
-            python_cmd = f"""
-import sys
-sys.path.insert(0, '.')
-from .codex.mcp_servers.agent_analytics.server import AgentAnalyticsServer
-import asyncio
-
-async def log_execution():
-    server = AgentAnalyticsServer(None)  # MCP instance not needed for direct logging
-    return await server.log_agent_execution(
-        agent_name='{agent_name}',
-        task='{safe_task}',
-        duration_seconds={duration_seconds},
-        success={str(success).lower()},
-        result_summary={"None" if result_summary is None else f"'{safe_result}'"},
-        context_tokens={context_tokens if context_tokens else "None"},
-        error_message={"None" if error_message is None else f"'{safe_error}'"}
-    )
-
-result = asyncio.run(log_execution())
-print('LOGGED' if result else 'FAILED')
-"""
-
-            cmd = [sys.executable, "-c", python_cmd]
-
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
-            if result.returncode == 0 and "LOGGED" in result.stdout:
+            # Run the async logging function
+            result = asyncio.run(log_execution())
+            if result:
                 logger.debug(f"Successfully logged agent execution for {agent_name}")
             else:
-                logger.debug(f"Failed to log agent execution: {result.stderr}")
+                logger.debug(f"Failed to log agent execution for {agent_name}")
 
         except Exception as e:
             logger.debug(f"Could not log agent execution to analytics: {e}")
@@ -777,47 +761,30 @@ class CodexAgentBackend(AgentBackend):
         analytics_flag = os.getenv("AMPLIFIER_ENABLE_AGENT_ANALYTICS", "").strip().lower()
         if analytics_flag not in {"1", "true", "yes"}:
             return
+        if AgentAnalyticsServer is None:
+            logger.debug("Agent analytics server unavailable; skipping logging")
+            return
 
         try:
-            # Try to invoke the agent analytics MCP server
-            import subprocess
-            import sys
+            # Create async helper to log execution
+            async def log_execution():
+                server = AgentAnalyticsServer(None)  # MCP instance not needed for direct logging
+                return await server.log_agent_execution(
+                    agent_name=agent_name,
+                    task=task,
+                    duration_seconds=duration_seconds,
+                    success=success,
+                    result_summary=result_summary,
+                    context_tokens=context_tokens,
+                    error_message=error_message,
+                )
 
-            # Escape single quotes in strings for shell safety
-            safe_task = task.replace("'", "'\"'\"'")
-            safe_result = result_summary.replace("'", "'\"'\"'") if result_summary else ""
-            safe_error = error_message.replace("'", "'\"'\"'") if error_message else ""
-
-            # Build the Python command
-            python_cmd = f"""
-import sys
-sys.path.insert(0, '.')
-from .codex.mcp_servers.agent_analytics.server import AgentAnalyticsServer
-import asyncio
-
-async def log_execution():
-    server = AgentAnalyticsServer(None)  # MCP instance not needed for direct logging
-    return await server.log_agent_execution(
-        agent_name='{agent_name}',
-        task='{safe_task}',
-        duration_seconds={duration_seconds},
-        success={str(success).lower()},
-        result_summary={"None" if result_summary is None else f"'{safe_result}'"},
-        context_tokens={context_tokens if context_tokens else "None"},
-        error_message={"None" if error_message is None else f"'{safe_error}'"}
-    )
-
-result = asyncio.run(log_execution())
-print('LOGGED' if result else 'FAILED')
-"""
-
-            cmd = [sys.executable, "-c", python_cmd]
-
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
-            if result.returncode == 0 and "LOGGED" in result.stdout:
+            # Run the async logging function
+            result = asyncio.run(log_execution())
+            if result:
                 logger.debug(f"Successfully logged agent execution for {agent_name}")
             else:
-                logger.debug(f"Failed to log agent execution: {result.stderr}")
+                logger.debug(f"Failed to log agent execution for {agent_name}")
 
         except Exception as e:
             logger.debug(f"Could not log agent execution to analytics: {e}")

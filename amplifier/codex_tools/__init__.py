@@ -1,9 +1,25 @@
 """Codex-specific tools and utilities for Amplifier."""
 
+import sys
 from pathlib import Path
 from typing import Any
 
+_PACKAGE_ROOT = Path(__file__).resolve().parents[2]
+_CODEX_ROOT = _PACKAGE_ROOT / ".codex"
+_CODEX_TOOLS = _CODEX_ROOT / "tools"
+
+for _extra_path in (_CODEX_TOOLS, _CODEX_ROOT):
+    if _extra_path.exists():
+        _as_str = str(_extra_path)
+        if _as_str not in sys.path:
+            sys.path.insert(0, _as_str)
+
 from .agent_context_bridge import AgentContextBridge
+
+try:
+    from mcp_servers.agent_analytics.server import AgentAnalyticsServer
+except ImportError:  # pragma: no cover - analytics server optional
+    AgentAnalyticsServer = None  # type: ignore[assignment]
 
 # Create singleton bridge instance
 _BRIDGE = AgentContextBridge()
@@ -121,4 +137,5 @@ __all__ = [
     "extract_agent_result",
     "cleanup_context_files",
     "create_combined_context_file",
+    "AgentAnalyticsServer",
 ]

@@ -35,9 +35,9 @@ reasoning_effort = "medium"  # PLACEHOLDER: Verify with Codex CLI docs
 startup_timeout_sec = 30
 tool_timeout_sec = 300
 
-# Experimental features flag
-# Enable remote MCP client capabilities
-experimental_use_rmcp_client = false
+# Feature flags
+[features]
+rmcp_client = true  # Use rmcp_client instead of deprecated experimental flag
 
 # =============================================================================
 # Custom Prompts Configuration
