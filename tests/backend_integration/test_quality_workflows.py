@@ -9,6 +9,7 @@ environment validation, and cross-backend parity testing.
 
 import json
 import tempfile
+from collections.abc import Generator
 from pathlib import Path
 from unittest.mock import Mock
 from unittest.mock import patch
@@ -28,7 +29,7 @@ except ImportError:
 
 
 @pytest.fixture
-def temp_dir() -> Path:
+def temp_dir() -> Generator[Path, None, None]:
     """Create temporary directory for test operations."""
     with tempfile.TemporaryDirectory() as tmpdir:
         yield Path(tmpdir)
@@ -389,9 +390,6 @@ class TestWorktreeQualityChecks:
         assert result["success"] is True
 
         # Verify checks run with correct environment
-        call_args = mock_subprocess_run.call_args_list[-1]
-        args, kwargs = call_args
-        env = kwargs.get("env", {})
         # Should use local .venv detection via uv
 
 

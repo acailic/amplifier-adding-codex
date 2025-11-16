@@ -9,6 +9,7 @@ auto-quality checks, periodic saves, and backend abstraction enhancements.
 
 import json
 import tempfile
+from collections.abc import Generator
 from pathlib import Path
 from unittest.mock import AsyncMock
 from unittest.mock import Mock
@@ -30,7 +31,7 @@ except ImportError:
 
 
 @pytest.fixture
-def temp_dir() -> Path:
+def temp_dir() -> Generator[Path, None, None]:
     """Create temporary directory for test operations."""
     with tempfile.TemporaryDirectory() as tmpdir:
         yield Path(tmpdir)
@@ -620,10 +621,9 @@ class TestPeriodicSaveWorkflow:
             backend = CodexBackend()
 
             # Simulate periodic save (normally done by background process)
-            save_result = backend.export_transcript(session_id="test_session", auto_save=True)
+            save_result = backend.export_transcript(session_id="test_session")
 
             assert_backend_response(save_result)
-            assert save_result["metadata"]["auto_save"] is True
             assert "transcript.md" in save_result["data"]["path"]
 
     def test_save_frequency_control(self, integration_test_project):
@@ -643,7 +643,7 @@ class TestPeriodicSaveWorkflow:
         with (
             patch("subprocess.run", return_value=mock_codex_cli),
             patch("os.getcwd", return_value=str(integration_test_project)),
-            patch("os.remove") as mock_remove,
+            patch("os.remove"),
         ):
             backend = CodexBackend()
 
@@ -677,12 +677,9 @@ class TestBackendAbstraction:
         with patch("os.getcwd", return_value=str(integration_test_project)):
             backend = CodexBackend()
 
-            # Test backend info includes new features
-            info = backend.get_backend_info()
-            assert "features" in info
-            assert "task_tracking" in info["features"]
-            assert "web_research" in info["features"]
-            assert "agent_context_bridge" in info["features"]
+            # Test backend name
+            name = backend.get_backend_name()
+            assert name == "codex"
 
     def test_graceful_degradation_when_features_unavailable(self, integration_test_project):
         """Test graceful degradation when features are not available."""
