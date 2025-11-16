@@ -112,3 +112,6 @@ ai-study-extension/popup/popup.js
 .vscode/*
 .codex/web_cache/*
 .vscode/*
+.codex/agent_contexts/*
+.codex/agent_results/*
+.codex/background_pids.txt

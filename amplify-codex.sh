@@ -302,7 +302,7 @@ if [ "$LIST_PROMPTS" = true ]; then
     done <<< "$PROMPT_FILES"
 
     echo "Usage:"
-    echo "  - Primary: codex exec --context-file=.codex/prompts/<name>.md \"<task>\""
+    echo "  - Primary: python scripts/codex_prompt.py --agent .codex/prompts/<name>.md --task \"Prompt goal\" | codex exec -"
     echo "  - TUI: Use /prompts: to browse (if registry supported in your Codex version)"
     echo ""
     echo "For more information, see .codex/prompts/README.md"
@@ -564,7 +564,7 @@ if [ "$HAS_WEB_RESEARCH" = "yes" ]; then
 fi
 echo -e "${BLUE}║${NC}                                                                ${BLUE}║${NC}"
 echo -e "${BLUE}║${NC}  ${GREEN}Custom Prompts Available:${NC}                                    ${BLUE}║${NC}"
-echo -e "${BLUE}║${NC}  ${GREEN}• Use: codex exec --context-file=.codex/prompts/<name>.md${NC}     ${BLUE}║${NC}"
+echo -e "${BLUE}║${NC}  ${GREEN}• Use: python scripts/codex_prompt.py --agent .codex/prompts/<name>.md --task \"...\" | codex exec -${NC} ${BLUE}║${NC}"
 if [ -n "$PROMPT_COUNT" ] && [ "$PROMPT_COUNT" -gt 0 ]; then
     echo -e "${BLUE}║${NC}  ${GREEN}• $PROMPT_COUNT prompt(s) found in .codex/prompts/${NC}               ${BLUE}║${NC}"
 fi
@@ -605,10 +605,9 @@ print_status "Starting Codex CLI..."
 # Build Codex command
 CODEX_CMD=("codex" "--profile" "$PROFILE")
 
-# Add context file if resuming session
+# Note about legacy resume context
 if [ -n "$SESSION_RESUME" ] && [ -f ".codex/session_context.md" ]; then
-    CODEX_CMD+=("--context-file" ".codex/session_context.md")
-    print_status "Resume context will be loaded from .codex/session_context.md"
+    print_warning "Resume context saved at .codex/session_context.md. Use scripts/codex_prompt.py to bundle it with an agent definition, then pipe the output into 'codex exec -' if you need to replay it."
 fi
 
 # Pass through remaining arguments

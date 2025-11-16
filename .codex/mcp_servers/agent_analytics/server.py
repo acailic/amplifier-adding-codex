@@ -6,14 +6,18 @@ Tracks and analyzes agent usage patterns, success rates, and provides recommenda
 """
 
 import json
+import sys
 import time
 from pathlib import Path
 from typing import Any
 
-from fastmcp import FastMCP
+MCP_SERVERS_ROOT = Path(__file__).resolve().parents[1]
+if str(MCP_SERVERS_ROOT) not in sys.path:
+    sys.path.insert(0, str(MCP_SERVERS_ROOT))
 
-from ..base import AmplifierMCPServer
-from ..base import MCPLogger
+from fastmcp_compat import FastMCP
+from base import AmplifierMCPServer
+from base import MCPLogger
 
 
 class AgentExecution:
