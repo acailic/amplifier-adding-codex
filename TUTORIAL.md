@@ -45,8 +45,11 @@ For tasks requiring multiple specialized agents working together:
 ```bash
 ./amplify-codex.sh                    # Start session
 
-# Primary method: Context file (works with all Codex versions)
-codex exec --context-file=.codex/prompts/ultrathink-task.md "Refactor authentication system to use JWT tokens"
+# Primary method: Build stdin prompt via helper
+python scripts/codex_prompt.py \
+  --agent .codex/prompts/ultrathink-task.md \
+  --task "Analyze the codebase architecture" \
+  | codex exec -
 
 # Alternative: Interactive TUI (if prompt registry supported)
 codex> /prompts:                      # Browse available prompts
@@ -79,24 +82,24 @@ A specialized custom prompt that orchestrates multiple agents for complex tasks:
 
 **Example scenarios:**
 ```bash
-# Architecture review (using --context-file, works reliably)
-codex exec --context-file=.codex/prompts/ultrathink-task.md "Review the authentication system architecture for security and maintainability"
+# Architecture review
+python scripts/codex_prompt.py --agent .codex/prompts/ultrathink-task.md --task "Audit architecture" | codex exec -
 
 # Complex refactoring
-codex exec --context-file=.codex/prompts/ultrathink-task.md "Refactor the database layer to support multiple backends"
+python scripts/codex_prompt.py --agent .codex/prompts/ultrathink-task.md --task "Refactor payment flow" | codex exec -
 
 # Bug investigation
-codex exec --context-file=.codex/prompts/ultrathink-task.md "Investigate intermittent connection failures in production"
+python scripts/codex_prompt.py --agent .codex/prompts/ultrathink-task.md --task "Track intermittent crash" | codex exec -
 
 # Feature planning
-codex exec --context-file=.codex/prompts/ultrathink-task.md "Design a new caching layer for the API"
+python scripts/codex_prompt.py --agent .codex/prompts/ultrathink-task.md --task "Plan developer portal" | codex exec -
 ```
 
 **Note**: If your Codex version supports `--prompt` and named arguments, you can use:
 ```bash
 codex exec --prompt ultrathink-task --task_description "<your task>"
 ```
-However, `--context-file` is the most portable approach.
+However, bundling via `scripts/codex_prompt.py ... | codex exec -` keeps the workflow portable across Codex releases.
 
 **Comparison with direct agent invocation:**
 - **Direct agents**: Quick, focused, single perspective

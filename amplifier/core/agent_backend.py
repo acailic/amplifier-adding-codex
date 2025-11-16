@@ -430,6 +430,7 @@ class CodexAgentBackend(AgentBackend):
         self.profile = os.getenv("CODEX_PROFILE", "development")
         self.context_temp_dir = _resolve_workspace_path(self.project_root, ".codex", "agent_contexts")
         self.context_temp_dir.mkdir(parents=True, exist_ok=True)
+        self.exec_mode = os.getenv("CODEX_EXEC_MODE", "stdin").strip().lower()
 
     def spawn_agent(self, agent_name: str, task: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
         """Spawn agent using Codex CLI."""
@@ -469,11 +470,14 @@ class CodexAgentBackend(AgentBackend):
                 context_payload=context_payload,
             )
 
-            cmd = [cli_path, "exec", f"--context-file={combined_context_file}", task, "--agent", agent_name]
+            combined_context_content = combined_context_file.read_text(encoding="utf-8")
+
+            cmd = self._build_codex_command(cli_path)
             logger.debug(f"Running command: {' '.join(cmd)}")
 
             result = subprocess.run(
                 cmd,
+                input=combined_context_content,
                 capture_output=True,
                 text=True,
                 timeout=300,  # 5 minute timeout
@@ -557,6 +561,23 @@ class CodexAgentBackend(AgentBackend):
                 self._cleanup_temp_file(serialized_context_file)
             if not preserve_combined:
                 self._cleanup_temp_file(combined_context_file)
+
+    def _build_codex_command(self, cli_path: str) -> list[str]:
+        """
+        Build the Codex CLI command based on the configured execution mode.
+
+        The default (stdin) mode pipes the assembled prompt directly into
+        `codex exec -`, which matches the latest CLI contract that removed
+        `--agent/--context-file` arguments.
+        """
+        if self.exec_mode not in {"stdin"}:
+            logger.warning(
+                "Unsupported CODEX_EXEC_MODE '%s'; falling back to stdin piping for codex exec",
+                self.exec_mode,
+            )
+            self.exec_mode = "stdin"
+
+        return [cli_path, "exec", "-"]
 
     def spawn_agent_with_context(
         self, agent_name: str, task: str, messages: list[dict[str, Any]], context: dict[str, Any] | None = None
@@ -661,7 +682,7 @@ class CodexAgentBackend(AgentBackend):
                         "return_code": result.returncode,
                         "result_file": extracted.get("result_file"),
                         "context_bridge_used": True,
-                        "invocation": "context-file",
+                        "invocation": "stdin",
                         "context_payload_bytes": context_bytes,
                         "context_file_name": context_file_name,
                         "profile": self.profile,
@@ -680,7 +701,7 @@ class CodexAgentBackend(AgentBackend):
                     "task_length": len(task),
                     "return_code": result.returncode,
                     "context_bridge_used": False,
-                    "invocation": "context-file",
+                    "invocation": "stdin",
                     "context_payload_bytes": context_bytes,
                     "context_file_name": context_file_name,
                     "profile": self.profile,
