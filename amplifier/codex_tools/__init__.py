@@ -1,5 +1,6 @@
 """Codex-specific tools and utilities for Amplifier."""
 
+import importlib
 import sys
 from pathlib import Path
 from typing import Any
@@ -16,10 +17,17 @@ for _extra_path in (_CODEX_TOOLS, _CODEX_ROOT):
 
 from .agent_context_bridge import AgentContextBridge
 
-try:
-    from mcp_servers.agent_analytics.server import AgentAnalyticsServer
-except ImportError:  # pragma: no cover - analytics server optional
-    AgentAnalyticsServer = None  # type: ignore[assignment]
+
+def _import_agent_analytics_server() -> Any | None:
+    """Dynamically import the AgentAnalyticsServer without static path assumptions."""
+    try:
+        module = importlib.import_module("mcp_servers.agent_analytics.server")
+        return module.AgentAnalyticsServer
+    except Exception:
+        return None
+
+
+AgentAnalyticsServer = _import_agent_analytics_server()
 
 # Create singleton bridge instance
 _BRIDGE = AgentContextBridge()
