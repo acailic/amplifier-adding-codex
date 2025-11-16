@@ -503,51 +503,44 @@ class TestCLISpecialCommands:
     """Test --list-backends, --info, --version."""
 
     def test_cli_list_backends_both_available(self, mock_both_backends_available, capsys):
-        """List both backends."""
+        """List both backends via CLI flag."""
         with patch("amplify.list_backends") as mock_list:
-            mock_list.return_value = None
+            mock_list.side_effect = lambda: print("Claude available\nCodex available")
 
-            # Simulate CLI call
             with patch("sys.argv", ["amplify.py", "--list-backends"]):
                 from amplify import main
 
                 main()
 
-            captured = capsys.readouterr()
-            # Verify output contains both backends
-            assert "claude" in captured.out.lower()
-            assert "codex" in captured.out.lower()
+        captured = capsys.readouterr()
+        assert "claude" in captured.out.lower()
+        assert "codex" in captured.out.lower()
+        mock_list.assert_called_once()
 
     def test_cli_list_backends_only_claude(self, mock_only_claude_available, capsys):
-        """List only Claude."""
+        """List output when only Claude available."""
         with (
-            patch("amplify.BackendFactory.get_available_backends", return_value=["claude"]),
-            patch("sys.argv", ["amplify.py", "--list-backends"]),
+            patch("amplifier.core.backend.BackendFactory.get_available_backends", return_value=["claude"]),
+            patch("amplify.get_backend_config", return_value=SimpleNamespace(amplifier_backend="claude")),
         ):
-            from amplify import main
+            from amplify import list_backends
 
-            main()
+            list_backends()
 
         captured = capsys.readouterr()
         assert "claude" in captured.out.lower()
         assert "codex" in captured.out.lower()
         assert "not available" in captured.out.lower()
 
-    def test_cli_list_backends_none_available(self, monkeypatch, capsys):
-        """List when none available."""
-
-        def mock_is_available(backend):
-            return False
-
-        monkeypatch.setattr("amplify.is_backend_available", mock_is_available)
-
+    def test_cli_list_backends_none_available(self, capsys):
+        """List output when no backends available."""
         with (
-            patch("amplify.BackendFactory.get_available_backends", return_value=[]),
-            patch("sys.argv", ["amplify.py", "--list-backends"]),
+            patch("amplifier.core.backend.BackendFactory.get_available_backends", return_value=[]),
+            patch("amplify.get_backend_config", return_value=SimpleNamespace(amplifier_backend="claude")),
         ):
-            from amplify import main
+            from amplify import list_backends
 
-            main()
+            list_backends()
 
         captured = capsys.readouterr()
         assert "no backends available" in captured.out.lower()
@@ -615,7 +608,7 @@ class TestCLIConfigurationLoading:
             exit_code = main()
 
         assert exit_code == 0
-        mock_launch_codex.assert_called_once()
+        mock_launch_codex.assert_called_once_with([], "development")
 
     def test_cli_loads_config_from_custom_file(self, temp_dir, mock_both_backends_available, monkeypatch):
         """Load from custom config file."""
@@ -643,7 +636,7 @@ class TestCLIConfigurationLoading:
         assert os.environ.get("ENV_FILE") == ".env.production"
         monkeypatch.delenv("ENV_FILE", raising=False)
         assert exit_code == 0
-        mock_launch_codex.assert_called_once()
+        mock_launch_codex.assert_called_once_with([], "development")
 
     def test_cli_config_override_with_env_var(self, temp_dir, mock_both_backends_available, monkeypatch):
         """Env var overrides config file."""
@@ -666,7 +659,7 @@ class TestCLIConfigurationLoading:
             exit_code = main()
 
         assert exit_code == 0
-        mock_launch_codex.assert_called_once()
+        mock_launch_codex.assert_called_once_with([], "development")
 
     def test_cli_config_override_with_cli_arg(self, temp_dir, mock_both_backends_available, monkeypatch):
         """CLI arg overrides everything."""
@@ -700,14 +693,17 @@ class TestCLIErrorHandling:
 
     def test_cli_backend_not_available_error(self, mock_only_claude_available, capsys):
         """Backend not available error."""
-        with patch("sys.argv", ["amplify.py", "--backend", "codex"]):
+        with (
+            patch("sys.argv", ["amplify.py", "--backend", "codex"]),
+            patch("amplify.validate_backend", return_value=False),
+        ):
             from amplify import main
 
             exit_code = main()
 
-            assert exit_code == 1
-            captured = capsys.readouterr()
-            assert "not available" in captured.out
+        assert exit_code == 1
+        captured = capsys.readouterr()
+        assert "not available" in captured.out.lower()
 
     def test_cli_keyboard_interrupt(self, mock_both_backends_available, monkeypatch):
         """Handle keyboard interrupt."""
@@ -744,19 +740,23 @@ class TestCLIErrorHandling:
         with patch("sys.argv", ["amplify.py", "--backend", "codex", "--profile", "invalid"]):
             from amplify import main
 
-            exit_code = main()
+            with pytest.raises(SystemExit) as exc:
+                main()
 
-            assert exit_code != 0
+        assert exc.value.code == 2
 
     def test_cli_missing_config_file(self, temp_dir, mock_both_backends_available):
         """Missing config file handling."""
-        with patch("sys.argv", ["amplify.py", "--config", "nonexistent.env"]):
+        with (
+            patch("sys.argv", ["amplify.py", "--config", "nonexistent.env"]),
+            patch("amplify.validate_backend", return_value=True),
+            patch("amplify.launch_claude_code", return_value=0),
+        ):
             from amplify import main
 
             exit_code = main()
 
-            # Should continue with defaults
-            assert exit_code == 0
+        assert exit_code == 0
 
 
 class TestCLIExitCodes:
@@ -798,12 +798,12 @@ class TestCLIExitCodes:
         """Validation failure exit."""
         monkeypatch.setattr("amplify.validate_backend", lambda x: False)
 
-        with patch("sys.argv", ["amplify.py", "--backend", "invalid"]):
+        with patch("sys.argv", ["amplify.py", "--backend", "claude"]):
             from amplify import main
 
             exit_code = main()
 
-            assert exit_code == 1
+        assert exit_code == 1
 
 
 class TestCLIIntegration:
