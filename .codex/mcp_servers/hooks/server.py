@@ -9,24 +9,32 @@ Replicates Claude Code's automatic hook behavior through MCP tools.
 import asyncio
 import json
 import os
-import sys
 import threading
 import time
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-MCP_SERVERS_ROOT = Path(__file__).resolve().parents[1]
-if str(MCP_SERVERS_ROOT) not in sys.path:
-    sys.path.insert(0, str(MCP_SERVERS_ROOT))
-
-from fastmcp_compat import FastMCP
+from fastmcp import FastMCP
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
-from base import AmplifierMCPServer
-from base import MCPLogger
-from ..tools.codex_mcp_client import CodexMCPClient
+try:
+    from ..base import AmplifierMCPServer
+    from ..base import MCPLogger
+    from ..tools.codex_mcp_client import CodexMCPClient
+except ImportError:
+    import sys
+
+    _servers_dir = Path(__file__).resolve().parents[1]
+    _codex_root = _servers_dir.parent
+    for _path in (str(_servers_dir), str(_codex_root)):
+        if _path not in sys.path:
+            sys.path.insert(0, _path)
+    from base import AmplifierMCPServer
+    from base import MCPLogger
+
+    from tools.codex_mcp_client import CodexMCPClient
 
 
 class HookConfig:
