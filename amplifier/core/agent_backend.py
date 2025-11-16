@@ -307,14 +307,15 @@ class ClaudeCodeAgentBackend(AgentBackend):
         analytics_flag = os.getenv("AMPLIFIER_ENABLE_AGENT_ANALYTICS", "").strip().lower()
         if analytics_flag not in {"1", "true", "yes"}:
             return
-        if AgentAnalyticsServer is None:
+        server_cls = AgentAnalyticsServer
+        if server_cls is None:
             logger.debug("Agent analytics server unavailable; skipping logging")
             return
 
         try:
             # Create async helper to log execution
             async def log_execution():
-                server = AgentAnalyticsServer(None)  # MCP instance not needed for direct logging
+                server = server_cls(None)  # MCP instance not needed for direct logging
                 return await server.log_agent_execution(
                     agent_name=agent_name,
                     task=task,
@@ -761,14 +762,15 @@ class CodexAgentBackend(AgentBackend):
         analytics_flag = os.getenv("AMPLIFIER_ENABLE_AGENT_ANALYTICS", "").strip().lower()
         if analytics_flag not in {"1", "true", "yes"}:
             return
-        if AgentAnalyticsServer is None:
+        server_cls = AgentAnalyticsServer
+        if server_cls is None:
             logger.debug("Agent analytics server unavailable; skipping logging")
             return
 
         try:
             # Create async helper to log execution
             async def log_execution():
-                server = AgentAnalyticsServer(None)  # MCP instance not needed for direct logging
+                server = server_cls(None)  # MCP instance not needed for direct logging
                 return await server.log_agent_execution(
                     agent_name=agent_name,
                     task=task,
