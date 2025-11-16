@@ -703,7 +703,7 @@ class TestCLIErrorHandling:
 
         assert exit_code == 1
         captured = capsys.readouterr()
-        assert "not available" in captured.out.lower()
+        assert "validation failed" in captured.out.lower()
 
     def test_cli_keyboard_interrupt(self, mock_both_backends_available, monkeypatch):
         """Handle keyboard interrupt."""
@@ -750,13 +750,19 @@ class TestCLIErrorHandling:
         with (
             patch("sys.argv", ["amplify.py", "--config", "nonexistent.env"]),
             patch("amplify.validate_backend", return_value=True),
+            patch(
+                "amplify.get_backend_config",
+                return_value=SimpleNamespace(amplifier_backend="claude", amplifier_backend_auto_detect=False),
+            ),
             patch("amplify.launch_claude_code", return_value=0),
+            patch("amplify.launch_codex") as mock_launch_codex,
         ):
             from amplify import main
 
             exit_code = main()
 
         assert exit_code == 0
+        mock_launch_codex.assert_not_called()
 
 
 class TestCLIExitCodes:

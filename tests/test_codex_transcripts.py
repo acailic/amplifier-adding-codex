@@ -169,7 +169,7 @@ class TestCodexTranscriptsBuilder:
         history_file = tmp_path / "history.jsonl"
         history_file.write_text("invalid json line")
 
-        with pytest.raises(Exception):
+        with pytest.raises(Exception):  # noqa: B017
             load_history(history_file, skip_errors=False, verbose=False)
 
     def test_filter_sessions_by_project(self, tmp_path, mock_session_directory):
@@ -661,7 +661,6 @@ class TestParsingEdgeCases:
         """Test session directory name generation and sanitization."""
         # This would test directory name sanitization
         # once implemented in the main code
-        special_chars = "/path/with/special:chars"
         # Should sanitize to safe directory name
         # Implementation would replace special chars
         pass
@@ -678,8 +677,6 @@ class TestIntegration:
         # Set up directories
         history_file = tmp_path / "history.jsonl"
         history_file.write_text(mock_codex_history)
-        sessions_root = tmp_path / "sessions"
-        output_dir = tmp_path / "output"
 
         # This would test the complete workflow once implemented
         # 1. Export with codex_transcripts_builder
