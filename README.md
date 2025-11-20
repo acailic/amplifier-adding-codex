@@ -385,6 +385,9 @@ uv run python .codex/tools/session_cleanup.py --session-id a1b2c3d4
 # Use specific profile
 ./amplify-codex.sh --profile ci
 
+# Resume a session (restores memory state and regenerates session_context.md for manual replay)
+./amplify-codex.sh --resume abc123
+
 # Skip initialization
 ./amplify-codex.sh --no-init
 
@@ -394,6 +397,17 @@ uv run python .codex/tools/session_cleanup.py --session-id a1b2c3d4
 # Show help
 ./amplify-codex.sh --help
 ```
+
+Resume mode does **not** auto-play the previous transcript. It reloads memory state, rebuilds `.codex/session_context.md`, and leaves you with a prompt bundle you can replay manually:
+
+```bash
+python scripts/codex_prompt.py \
+  --agent .codex/agents/<agent>.md \
+  --context .codex/session_context.md \
+  | codex exec -
+```
+
+Replace `<agent>` with the Codex agent you want to narrate the recap (for example, `analysis-engine`).
 
 ### Agent Conversion
 
