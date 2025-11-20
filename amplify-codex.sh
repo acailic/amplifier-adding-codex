@@ -97,6 +97,17 @@ NOTIFICATIONS=true
 SMART_CONTEXT=true
 AUTO_DRAFT=false
 PROMPT_COUNT=0
+AGENTIC_MODE=false
+AGENTIC_TASK=""
+AGENTIC_TASK_FILE=""
+AGENTIC_ACCEPT_PATTERN=""
+AGENTIC_ACCEPT_DESCRIPTION=""
+AGENTIC_MAX_ITERATIONS=""
+AGENTIC_MAX_TURNS=""
+AGENTIC_HISTORY_FILE=""
+AGENTIC_NOTES=""
+AGENTIC_MONITOR_CHECK=true
+AGENTIC_EXTRA_OPTIONS=()
 
 # Parse command-line arguments
 while [[ $# -gt 0 ]]; do
@@ -149,6 +160,61 @@ while [[ $# -gt 0 ]]; do
             SHOW_HELP=true
             shift
             ;;
+        --agentic-task)
+            AGENTIC_MODE=true
+            AGENTIC_TASK="$2"
+            shift 2
+            ;;
+        --agentic-task-file)
+            AGENTIC_MODE=true
+            AGENTIC_TASK_FILE="$2"
+            shift 2
+            ;;
+        --agentic-accept)
+            AGENTIC_MODE=true
+            AGENTIC_ACCEPT_PATTERN="$2"
+            shift 2
+            ;;
+        --agentic-accept-description)
+            AGENTIC_MODE=true
+            AGENTIC_ACCEPT_DESCRIPTION="$2"
+            shift 2
+            ;;
+        --agentic-max-iterations)
+            AGENTIC_MODE=true
+            AGENTIC_MAX_ITERATIONS="$2"
+            shift 2
+            ;;
+        --agentic-max-turns)
+            AGENTIC_MODE=true
+            AGENTIC_MAX_TURNS="$2"
+            shift 2
+            ;;
+        --agentic-history-file)
+            AGENTIC_MODE=true
+            AGENTIC_HISTORY_FILE="$2"
+            shift 2
+            ;;
+        --agentic-notes)
+            AGENTIC_MODE=true
+            AGENTIC_NOTES="$2"
+            shift 2
+            ;;
+        --agentic-no-monitor)
+            AGENTIC_MODE=true
+            AGENTIC_MONITOR_CHECK=false
+            shift
+            ;;
+        --agentic-option)
+            AGENTIC_MODE=true
+            AGENTIC_EXTRA_OPTIONS+=("$2")
+            shift 2
+            ;;
+        --agentic-append-history)
+            AGENTIC_MODE=true
+            AGENTIC_EXTRA_OPTIONS+=("--append-history")
+            shift
+            ;;
         *)
             # Pass through to Codex
             break
@@ -174,6 +240,17 @@ if [ "$SHOW_HELP" = true ]; then
     echo "  --auto-draft           Create draft commit for uncommitted changes on exit"
     echo "  --check-only           Run prerequisite checks and exit (no Codex launch)"
     echo "  --list-prompts         List available custom prompts and exit"
+    echo "  --agentic-task <text>  Run the Amplifier agentic runner CLI instead of launching Codex"
+    echo "     --agentic-task-file <path>            Load the task description from a file"
+    echo "     --agentic-accept <regex>              Override acceptance marker regex"
+    echo "     --agentic-accept-description <text>   Plain-language acceptance string for the agent"
+    echo "     --agentic-max-iterations <n>          Cap iterations before failing (default 5)"
+    echo "     --agentic-max-turns <n>               Max Claude turns per iteration (default 3)"
+    echo "     --agentic-history-file <path>         Persist iteration history to a custom JSONL file"
+    echo "     --agentic-notes <text>                Extra instructions injected into every prompt"
+    echo "     --agentic-no-monitor                  Skip token-usage checks before each iteration"
+    echo "     --agentic-option <flag>               Pass additional flags to agentic_runner (repeatable)"
+    echo "     --agentic-append-history              Append to the history file instead of replacing"
     echo "  --help                 Show this help message"
     echo ""
     echo "All other arguments are passed through to Codex CLI."
@@ -343,6 +420,45 @@ if ! command -v uv &> /dev/null; then
 fi
 
 print_success "Prerequisites validated"
+
+# Agentic runner mode (runs after prerequisites are verified)
+if [ "$AGENTIC_MODE" = true ]; then
+    agent_cmd=( "uv" "run" "python" "-m" "amplifier.codex_tools.agentic_runner" )
+    if [ -n "$AGENTIC_TASK" ]; then
+        agent_cmd+=( "--task-text" "$AGENTIC_TASK" )
+    fi
+    if [ -n "$AGENTIC_TASK_FILE" ]; then
+        agent_cmd+=( "--task-file" "$AGENTIC_TASK_FILE" )
+    fi
+    if [ -n "$AGENTIC_ACCEPT_PATTERN" ]; then
+        agent_cmd+=( "--accept-pattern" "$AGENTIC_ACCEPT_PATTERN" )
+    fi
+    if [ -n "$AGENTIC_ACCEPT_DESCRIPTION" ]; then
+        agent_cmd+=( "--accept-description" "$AGENTIC_ACCEPT_DESCRIPTION" )
+    fi
+    if [ -n "$AGENTIC_MAX_ITERATIONS" ]; then
+        agent_cmd+=( "--max-iterations" "$AGENTIC_MAX_ITERATIONS" )
+    fi
+    if [ -n "$AGENTIC_MAX_TURNS" ]; then
+        agent_cmd+=( "--max-turns" "$AGENTIC_MAX_TURNS" )
+    fi
+    if [ -n "$AGENTIC_HISTORY_FILE" ]; then
+        agent_cmd+=( "--history-file" "$AGENTIC_HISTORY_FILE" )
+    fi
+    if [ -n "$AGENTIC_NOTES" ]; then
+        agent_cmd+=( "--notes" "$AGENTIC_NOTES" )
+    fi
+    if [ "$AGENTIC_MONITOR_CHECK" = false ]; then
+        agent_cmd+=( "--no-session-monitor-check" )
+    fi
+    for opt in "${AGENTIC_EXTRA_OPTIONS[@]}"; do
+        agent_cmd+=("$opt")
+    done
+
+    print_status "Launching Amplifier agentic runner..."
+    "${agent_cmd[@]}"
+    exit $?
+fi
 
 # Exit early if --check-only
 if [ "$CHECK_ONLY" = true ]; then
