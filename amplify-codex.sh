@@ -84,7 +84,7 @@ notify_session_end() {
 }
 
 # Default values
-PROFILE="development"
+PROFILE="fast"  # Use fast profile by default for quick startup (~3s vs ~15s)
 SKIP_INIT=false
 SKIP_CLEANUP=false
 SHOW_HELP=false
@@ -108,6 +108,7 @@ AGENTIC_HISTORY_FILE=""
 AGENTIC_NOTES=""
 AGENTIC_MONITOR_CHECK=true
 AGENTIC_EXTRA_OPTIONS=()
+FAST_START=${CODEX_FAST_START:-false}
 
 # Parse command-line arguments
 while [[ $# -gt 0 ]]; do
@@ -215,6 +216,10 @@ while [[ $# -gt 0 ]]; do
             AGENTIC_EXTRA_OPTIONS+=("--append-history")
             shift
             ;;
+        --fast-start)
+            FAST_START=true
+            shift
+            ;;
         *)
             # Pass through to Codex
             break
@@ -229,7 +234,9 @@ if [ "$SHOW_HELP" = true ]; then
     echo "Usage: $0 [options] [codex-options]"
     echo ""
     echo "Options:"
-    echo "  --profile <name>       Select Codex profile (development, ci, review) [default: development]"
+    echo "  --profile <name>       Select Codex profile (fast, development, ci, review) [default: fast]"
+    echo "                         fast: 3 servers (~3s startup) - session, quality, token_monitor"
+    echo "                         development: 10 servers (~15s startup) - all features"
     echo "  --resume <session-id>  Restore memory state, rebuild session_context.md, and prep manual replay via scripts/codex_prompt.py | codex exec - (no automatic replay)"
     echo "  --no-init              Skip pre-session initialization"
     echo "  --no-cleanup           Skip post-session cleanup"
@@ -251,6 +258,7 @@ if [ "$SHOW_HELP" = true ]; then
     echo "     --agentic-no-monitor                  Skip token-usage checks before each iteration"
     echo "     --agentic-option <flag>               Pass additional flags to agentic_runner (repeatable)"
     echo "     --agentic-append-history              Append to the history file instead of replacing"
+    echo "  --fast-start           Skip smart context + Python init scripts for faster launch (env: CODEX_FAST_START=true)"
     echo "  --help                 Show this help message"
     echo ""
     echo "All other arguments are passed through to Codex CLI."
@@ -391,6 +399,20 @@ fi
 export AMPLIFIER_BACKEND=codex
 export AMPLIFIER_ROOT="$(pwd)"
 export MEMORY_SYSTEM_ENABLED="${MEMORY_SYSTEM_ENABLED:-true}"
+
+# Prefer the venv interpreter to avoid uv startup overhead; fall back to uv run if missing
+PYTHON_CMD=(".venv/bin/python")
+if [ ! -x "${PYTHON_CMD[0]}" ]; then
+    PYTHON_CMD=("uv" "run" "python")
+fi
+
+# Fast start trades context-building for speed
+if [ "$FAST_START" = true ]; then
+    SMART_CONTEXT=false
+    if [ -z "$SESSION_RESUME" ]; then
+        SKIP_INIT=true
+    fi
+fi
 
 # Prerequisites Validation
 print_status "Validating prerequisites..."
@@ -550,12 +572,16 @@ print_status "Setting up Codex configuration..."
 # Create ~/.codex directory if it doesn't exist
 mkdir -p ~/.codex
 
-# Copy project config to Codex's default location
-if cp .codex/config.toml ~/.codex/config.toml; then
-    print_success "Configuration copied to ~/.codex/config.toml"
+# Copy project config to Codex's default location (skip copy if unchanged)
+if cmp -s .codex/config.toml ~/.codex/config.toml 2>/dev/null; then
+    print_success "Configuration already up to date at ~/.codex/config.toml"
 else
-    print_error "Failed to copy configuration file"
-    exit 1
+    if cp .codex/config.toml ~/.codex/config.toml; then
+        print_success "Configuration copied to ~/.codex/config.toml"
+    else
+        print_error "Failed to copy configuration file"
+        exit 1
+    fi
 fi
 
 # Verify custom prompts directory exists
@@ -583,7 +609,12 @@ if [ "$SKIP_INIT" = false ]; then
 
         export GIT_BRANCH=$(git branch --show-current 2>/dev/null || echo "unknown")
         export RECENT_COMMITS=$(git log --oneline -5 2>/dev/null | tr '\n' '|' | sed 's/|$//' || echo "none")
-        export TODO_FILES=$(find . -name "*.py" -type f -exec grep -l "TODO\|FIXME\|XXX" {} \; 2>/dev/null | head -5 | tr '\n' ' ' || echo "none")
+        # Use ripgrep when available to keep TODO discovery fast on large trees
+        if command -v rg &> /dev/null; then
+            export TODO_FILES=$(rg --files-with-matches "(TODO|FIXME|XXX)" -g '*.py' --max-filesize 200k 2>/dev/null | head -5 | tr '\n' ' ' || echo "none")
+        else
+            export TODO_FILES=$(find . -name "*.py" -type f -exec grep -l "TODO\|FIXME\|XXX" {} \; 2>/dev/null | head -5 | tr '\n' ' ' || echo "none")
+        fi
 
         # Detect project type and technologies
         if [ -f "pyproject.toml" ]; then
@@ -608,7 +639,7 @@ if [ "$SKIP_INIT" = false ]; then
         print_status "Resuming session: $SESSION_RESUME"
 
         # Run session resume script
-        if uv run python .codex/tools/session_resume.py --session-id "$SESSION_RESUME" 2>&1 | tee .codex/logs/session_resume.log; then
+        if "${PYTHON_CMD[@]}" .codex/tools/session_resume.py --session-id "$SESSION_RESUME" 2>&1 | tee .codex/logs/session_resume.log; then
             RESUME_SUMMARY=$(tail -n 1 .codex/logs/session_resume.log | grep -o "Resumed session" || echo "Session resumed")
             print_success "$RESUME_SUMMARY"
         else
@@ -622,7 +653,7 @@ if [ "$SKIP_INIT" = false ]; then
 
     # Run initialization script (skip if resuming)
     if [ -z "$SESSION_RESUME" ]; then
-        if uv run python .codex/tools/session_init.py 2>&1 | tee .codex/logs/session_init.log; then
+        if "${PYTHON_CMD[@]}" .codex/tools/session_init.py 2>&1 | tee .codex/logs/session_init.log; then
             # Extract summary from output (assuming it prints something like "Loaded X memories")
             SUMMARY=$(tail -n 1 .codex/logs/session_init.log | grep -o "Loaded [0-9]* memories" || echo "Initialization completed")
             print_success "$SUMMARY"
@@ -643,7 +674,7 @@ if [ "$AUTO_SAVE" = true ]; then
         while true; do
             sleep 600  # 10 minutes
             echo "$(date '+%Y-%m-%d %H:%M:%S'): Auto save triggered" >> .codex/logs/auto_saves.log
-            uv run python .codex/tools/auto_save.py >> .codex/logs/auto_saves.log 2>&1 || echo "$(date '+%Y-%m-%d %H:%M:%S'): Auto save failed" >> .codex/logs/auto_saves.log
+            "${PYTHON_CMD[@]}" .codex/tools/auto_save.py >> .codex/logs/auto_saves.log 2>&1 || echo "$(date '+%Y-%m-%d %H:%M:%S'): Auto save failed" >> .codex/logs/auto_saves.log
         done
     ) &
     AUTO_SAVE_PID=$!
@@ -813,7 +844,7 @@ if [ "$AUTO_CHECKS" = true ]; then
         mkdir -p .codex/logs
 
         # Run auto-check script
-        echo "$MODIFIED_FILES" | uv run python .codex/tools/auto_check.py 2>&1 | tee .codex/logs/auto_checks.log || print_warning "Auto-quality checks failed"
+        echo "$MODIFIED_FILES" | "${PYTHON_CMD[@]}" .codex/tools/auto_check.py 2>&1 | tee .codex/logs/auto_checks.log || print_warning "Auto-quality checks failed"
     else
         print_status "No modified files detected for quality checks"
     fi
@@ -827,7 +858,7 @@ if [ "$SKIP_CLEANUP" = false ] && [ "$cleanup_needed" = true ]; then
     mkdir -p .codex/logs
 
     # Run cleanup script
-    if uv run python .codex/tools/session_cleanup.py 2>&1 | tee .codex/logs/session_cleanup.log; then
+    if "${PYTHON_CMD[@]}" .codex/tools/session_cleanup.py 2>&1 | tee .codex/logs/session_cleanup.log; then
         # Extract summary from output
         SUMMARY=$(tail -n 1 .codex/logs/session_cleanup.log | grep -o "Extracted [0-9]* memories" || echo "Cleanup completed")
         print_success "$SUMMARY"

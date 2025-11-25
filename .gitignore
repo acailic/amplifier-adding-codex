@@ -115,3 +115,5 @@ ai-study-extension/popup/popup.js
 .codex/agent_contexts/*
 .codex/agent_results/*
 .codex/background_pids.txt
+.codex/agent_analytics/*
+.codex/agentic_runs/*
