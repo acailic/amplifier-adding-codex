@@ -17,6 +17,13 @@
 # Top-level Settings
 # =============================================================================
 
+# Default profile to use (fast, development, ci, or review)
+# - fast: 3 servers (~3s startup) - session, quality, token_monitor
+# - development: 10 servers (~15s startup) - all features
+# - ci: 1 server - quality only
+# - review: 6 servers - quality, transcripts, tasks, analytics, memory, token
+default_profile = "fast"
+
 # Model configuration (equivalent to .claude/settings.json model settings)
 model = "gpt-5-codex"
 # provider = "anthropic"  # PLACEHOLDER: Verify with Codex CLI docs
@@ -86,90 +93,100 @@ restart_backoff_seconds = 2
 
 # Session Management MCP Server
 # Replaces: .claude/hooks/SessionStart.py and SessionStop.py
+# NOTE: Uses direct python for faster startup (avoids uv sync overhead)
 [mcp_servers.amplifier_session]
-command = "uv"
-args = ["run", "--directory", "/Users/aleksandarilic/Documents/github/acailic/improvements-ampl/amplifier-adding-codex", "python", ".codex/mcp_servers/session_manager/server.py"]
+command = "/Users/aleksandarilic/Documents/github/acailic/improvements-ampl/amplifier-adding-codex/.venv/bin/python"
+args = [".codex/mcp_servers/session_manager/server.py"]
 env = { AMPLIFIER_ROOT = "/Users/aleksandarilic/Documents/github/acailic/improvements-ampl/amplifier-adding-codex", PYTHONPATH = "/Users/aleksandarilic/Documents/github/acailic/improvements-ampl/amplifier-adding-codex" }
 timeout = 30
 # Purpose: Initialize session context, set up workspace, handle session cleanup
 
 # Code Quality Checker MCP Server
 # Replaces: .claude/hooks/PostToolUse.py
+# NOTE: Uses direct python for faster startup (avoids uv sync overhead)
 [mcp_servers.amplifier_quality]
-command = "uv"
-args = ["run", "--directory", "/Users/aleksandarilic/Documents/github/acailic/improvements-ampl/amplifier-adding-codex", "python", ".codex/mcp_servers/quality_checker/server.py"]
+command = "/Users/aleksandarilic/Documents/github/acailic/improvements-ampl/amplifier-adding-codex/.venv/bin/python"
+args = [".codex/mcp_servers/quality_checker/server.py"]
 env = { AMPLIFIER_ROOT = "/Users/aleksandarilic/Documents/github/acailic/improvements-ampl/amplifier-adding-codex", PYTHONPATH = "/Users/aleksandarilic/Documents/github/acailic/improvements-ampl/amplifier-adding-codex" }
 timeout = 30
 # Purpose: Run code quality checks after tool usage, validate changes
 
 # Transcript Management MCP Server
 # Replaces: .claude/hooks/PreCompact.py
+# NOTE: Uses direct python for faster startup (avoids uv sync overhead)
 [mcp_servers.amplifier_transcripts]
-command = "uv"
-args = ["run", "--directory", "/Users/aleksandarilic/Documents/github/acailic/improvements-ampl/amplifier-adding-codex", "python", ".codex/mcp_servers/transcript_saver/server.py"]
+command = "/Users/aleksandarilic/Documents/github/acailic/improvements-ampl/amplifier-adding-codex/.venv/bin/python"
+args = [".codex/mcp_servers/transcript_saver/server.py"]
 env = { AMPLIFIER_ROOT = "/Users/aleksandarilic/Documents/github/acailic/improvements-ampl/amplifier-adding-codex", PYTHONPATH = "/Users/aleksandarilic/Documents/github/acailic/improvements-ampl/amplifier-adding-codex" }
 timeout = 30
 # Purpose: Save and manage session transcripts, integrate with existing transcript system
 
 # Task Tracker MCP Server
 # Replaces: Claude Code's TodoWrite functionality
+# NOTE: Uses direct python for faster startup (avoids uv sync overhead)
 [mcp_servers.amplifier_tasks]
-command = "uv"
-args = ["run", "--directory", "/Users/aleksandarilic/Documents/github/acailic/improvements-ampl/amplifier-adding-codex", "python", ".codex/mcp_servers/task_tracker/server.py"]
+command = "/Users/aleksandarilic/Documents/github/acailic/improvements-ampl/amplifier-adding-codex/.venv/bin/python"
+args = [".codex/mcp_servers/task_tracker/server.py"]
 env = { AMPLIFIER_ROOT = "/Users/aleksandarilic/Documents/github/acailic/improvements-ampl/amplifier-adding-codex", PYTHONPATH = "/Users/aleksandarilic/Documents/github/acailic/improvements-ampl/amplifier-adding-codex" }
 timeout = 30
 # Purpose: Provide task management within Codex sessions, replicating TodoWrite
 
 # Web Research MCP Server
 # Replaces: Claude Code's WebFetch functionality
+# NOTE: Uses direct python for faster startup (avoids uv sync overhead)
 [mcp_servers.amplifier_web]
-command = "uv"
-args = ["run", "--directory", "/Users/aleksandarilic/Documents/github/acailic/improvements-ampl/amplifier-adding-codex", "python", ".codex/mcp_servers/web_research/server.py"]
+command = "/Users/aleksandarilic/Documents/github/acailic/improvements-ampl/amplifier-adding-codex/.venv/bin/python"
+args = [".codex/mcp_servers/web_research/server.py"]
 env = { AMPLIFIER_ROOT = "/Users/aleksandarilic/Documents/github/acailic/improvements-ampl/amplifier-adding-codex", PYTHONPATH = "/Users/aleksandarilic/Documents/github/acailic/improvements-ampl/amplifier-adding-codex" }
 timeout = 60
 # Purpose: Provide web search and content fetching capabilities within Codex sessions
 
 # Notifications MCP Server
 # Provides: Desktop notifications for task completion and errors
+# NOTE: Uses direct python for faster startup (avoids uv sync overhead)
 [mcp_servers.amplifier_notifications]
-command = "uv"
-args = ["run", "--directory", "/Users/aleksandarilic/Documents/github/acailic/improvements-ampl/amplifier-adding-codex", "python", ".codex/mcp_servers/notifications/server.py"]
+command = "/Users/aleksandarilic/Documents/github/acailic/improvements-ampl/amplifier-adding-codex/.venv/bin/python"
+args = [".codex/mcp_servers/notifications/server.py"]
 env = { AMPLIFIER_ROOT = "/Users/aleksandarilic/Documents/github/acailic/improvements-ampl/amplifier-adding-codex", PYTHONPATH = "/Users/aleksandarilic/Documents/github/acailic/improvements-ampl/amplifier-adding-codex" }
 timeout = 30
 # Purpose: Send desktop notifications for task completion, errors, and important events
 
 # Token Monitor MCP Server
 # Provides: Token usage tracking, checkpoint/resume data, and termination tooling
+# NOTE: Uses direct python for faster startup (avoids uv sync overhead)
 [mcp_servers.token_monitor]
-command = "uv"
-args = ["run", "--directory", "/Users/aleksandarilic/Documents/github/acailic/improvements-ampl/amplifier-adding-codex", "python", ".codex/mcp_servers/token_monitor/server.py"]
+command = "/Users/aleksandarilic/Documents/github/acailic/improvements-ampl/amplifier-adding-codex/.venv/bin/python"
+args = [".codex/mcp_servers/token_monitor/server.py"]
 env = { AMPLIFIER_ROOT = "/Users/aleksandarilic/Documents/github/acailic/improvements-ampl/amplifier-adding-codex", PYTHONPATH = "/Users/aleksandarilic/Documents/github/acailic/improvements-ampl/amplifier-adding-codex" }
 timeout = 30
 # Purpose: Monitor token usage, handle termination requests, and surface daemon health checks
 
 # Hooks Orchestration MCP Server
 # Provides: Automatic triggers for file changes, session events, periodic tasks
+# NOTE: Uses direct python for faster startup (avoids uv sync overhead)
 [mcp_servers.amplifier_hooks]
-command = "uv"
-args = ["run", "--directory", "/Users/aleksandarilic/Documents/github/acailic/improvements-ampl/amplifier-adding-codex", "python", ".codex/mcp_servers/hooks/server.py"]
+command = "/Users/aleksandarilic/Documents/github/acailic/improvements-ampl/amplifier-adding-codex/.venv/bin/python"
+args = [".codex/mcp_servers/hooks/server.py"]
 env = { AMPLIFIER_ROOT = "/Users/aleksandarilic/Documents/github/acailic/improvements-ampl/amplifier-adding-codex", PYTHONPATH = "/Users/aleksandarilic/Documents/github/acailic/improvements-ampl/amplifier-adding-codex" }
 timeout = 60
 # Purpose: Orchestrate automatic hooks for file changes, session events, and periodic tasks
 
 # Agent Analytics MCP Server
 # Provides: Tracking and analysis of agent usage patterns
+# NOTE: Uses direct python execution via .venv for faster startup (avoids uv sync overhead)
 [mcp_servers.amplifier_agent_analytics]
-command = "uv"
-args = ["run", "--directory", "/Users/aleksandarilic/Documents/github/acailic/improvements-ampl/amplifier-adding-codex", "python", ".codex/mcp_servers/agent_analytics/server.py"]
+command = "/Users/aleksandarilic/Documents/github/acailic/improvements-ampl/amplifier-adding-codex/.venv/bin/python"
+args = [".codex/mcp_servers/agent_analytics/server.py"]
 env = { AMPLIFIER_ROOT = "/Users/aleksandarilic/Documents/github/acailic/improvements-ampl/amplifier-adding-codex", PYTHONPATH = "/Users/aleksandarilic/Documents/github/acailic/improvements-ampl/amplifier-adding-codex" }
 timeout = 30
 # Purpose: Track agent executions, provide usage statistics and recommendations
 
 # Memory Enhancement MCP Server
 # Provides: Proactive memory suggestions and quality management
+# NOTE: Uses direct python for faster startup (avoids uv sync overhead)
 [mcp_servers.amplifier_memory_enhanced]
-command = "uv"
-args = ["run", "--directory", "/Users/aleksandarilic/Documents/github/acailic/improvements-ampl/amplifier-adding-codex", "python", ".codex/mcp_servers/memory_enhanced/server.py"]
+command = "/Users/aleksandarilic/Documents/github/acailic/improvements-ampl/amplifier-adding-codex/.venv/bin/python"
+args = [".codex/mcp_servers/memory_enhanced/server.py"]
 env = { AMPLIFIER_ROOT = "/Users/aleksandarilic/Documents/github/acailic/improvements-ampl/amplifier-adding-codex", PYTHONPATH = "/Users/aleksandarilic/Documents/github/acailic/improvements-ampl/amplifier-adding-codex" }
 timeout = 30
 # Purpose: Provide proactive memory suggestions and manage memory quality
@@ -177,6 +194,13 @@ timeout = 30
 # =============================================================================
 # Profiles Section - Configure which servers to use per profile
 # =============================================================================
+
+# Fast profile - minimal servers for quick startup (~3s instead of 15s)
+# Use with: ./amplify-codex.sh --profile fast
+[profiles.fast]
+tool_timeout_sec = 300
+# Only essential servers: session + quality + token monitoring
+mcp_servers = ["amplifier_session", "amplifier_quality", "token_monitor"]
 
 # Development profile - permissive settings for active development
 [profiles.development]
