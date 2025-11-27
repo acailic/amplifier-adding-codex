@@ -34,7 +34,7 @@
 | **Manual Start** | `codex --profile development` | Direct Codex launch |
 | **Quality Check** | `codex> check_code_quality with file_paths ["file.py"]` | MCP tool |
 | **Save Transcript** | `codex> save_current_transcript with format "both"` | Export session |
-| **Spawn Agent** | `codex exec --agent bug-hunter "task"` | Manual agent execution |
+| **Spawn Agent** | `python scripts/codex_prompt.py --agent .codex/agents/bug-hunter.md --task "task" \| codex exec -` | Manual agent execution |
 | **Task Management** | `codex> create_task with title "Fix bug" and description "..."` | New MCP tool |
 | **Web Research** | `codex> search_web with query "topic" and num_results 5` | New MCP tool |
 
@@ -1306,7 +1306,10 @@ codex exec "Find and fix the authentication bug"
 #### Manual Selection
 ```bash
 # Explicit agent selection
-codex exec --agent zen-architect "Design the caching layer"
+python scripts/codex_prompt.py \
+  --agent .codex/agents/zen-architect.md \
+  --task "Design the caching layer" \
+  | codex exec -
 ```
 
 #### Programmatic Usage
@@ -1324,7 +1327,7 @@ result = spawn_agent(
 
 | Aspect | Claude Code | Codex |
 |--------|-------------|-------|
-| **Invocation** | `Task(agent_name, task)` | `codex exec --agent <name> "<task>"` |
+| **Invocation** | `Task(agent_name, task)` | `python scripts/codex_prompt.py --agent .codex/agents/<name>.md --task "<task>" \| codex exec -` |
 | **Tool Access** | Task, TodoWrite, WebFetch | Read, Grep, Glob, Bash, Write |
 | **Execution** | Automatic via Task tool | Explicit `codex exec` command |
 | **Context** | Automatic conversation context | Manual context passing |
@@ -1355,10 +1358,10 @@ The agent context bridge enables passing conversation context to agents, allowin
 ### Context Injection
 
 **Automatic Integration:**
-- Modified `CodexAgentBackend.spawn_agent()` to use bridge
-- Serializes context before agent execution
-- Passes context via `--context-file` argument
-- Cleans up context files after execution
+- `CodexAgentBackend.spawn_agent()` serializes context through the bridge
+- Combined agent + context markdown is generated
+- Combined prompt is piped to `codex exec -` via stdin
+- Temporary context files are cleaned up after execution
 
 **Usage:**
 ```python
@@ -1978,10 +1981,16 @@ python -c "import yaml; print(yaml.safe_load(open('.codex/agents/bug-hunter.md')
 **Agent execution failures:**
 ```bash
 # Test agent spawning
-codex exec --agent bug-hunter "test task"
+python scripts/codex_prompt.py \
+  --agent .codex/agents/bug-hunter.md \
+  --task "test task" \
+  | codex exec -
 
 # Check Codex logs
-codex --log-level debug exec --agent bug-hunter "test"
+python scripts/codex_prompt.py \
+  --agent .codex/agents/bug-hunter.md \
+  --task "test" \
+  | codex --log-level debug exec -
 
 # Verify tool permissions
 cat .codex/config.toml | grep -A 5 "tool_permissions"

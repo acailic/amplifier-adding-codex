@@ -154,7 +154,7 @@ codex-agent() {
 
     if [ -z "$agent_name" ]; then
         echo -e "${YELLOW}Usage: codex-agent <agent-name> <task>${NC}"
-        echo "Available agents: zen-architect, bug-hunter, test-coverage, etc."
+        echo "Available agents: files under .codex/agents/"
         return 1
     fi
 
@@ -163,10 +163,46 @@ codex-agent() {
         return 1
     fi
 
+    codex-shortcuts-check || return 1
+
     echo -e "${BLUE}Spawning agent: $agent_name${NC}"
     echo -e "${BLUE}Task: $task${NC}"
 
-    codex exec "$agent_name" --prompt "$task"
+    local agent_path=".codex/agents/${agent_name}.md"
+    if [ ! -f "$agent_path" ]; then
+        echo -e "${RED}Agent file not found: $agent_path${NC}" >&2
+        return 1
+    fi
+
+    codex exec --context-file "$agent_path" "$task"
+}
+
+# Route a task to an agent based on keywords, then execute it
+codex-route() {
+    local task="$*"
+
+    if [ -z "$task" ]; then
+        echo -e "${YELLOW}Usage: codex-route <task description>${NC}"
+        return 1
+    fi
+
+    codex-shortcuts-check || return 1
+
+    local resolved
+    if ! resolved=$(uv run python .codex/tools/agent_router.py --task "$task"); then
+        echo -e "${RED}Agent routing failed. Specify an agent explicitly with codex-agent.${NC}"
+        return 1
+    fi
+
+    local agent_path="$resolved"
+    local agent_name
+    agent_name=$(basename "$agent_path")
+    agent_name="${agent_name%.md}"
+
+    echo -e "${BLUE}Routing to agent: $agent_name${NC}"
+    echo -e "${BLUE}Task: $task${NC}"
+
+    codex exec --context-file "$agent_path" "$task"
 }
 
 # Agent analytics shortcuts
@@ -401,7 +437,8 @@ codex-help() {
     echo "  codex-search <query>           - Search the web (requires active session)"
     echo ""
     echo -e "${BLUE}Agents:${NC}"
-    echo "  codex-agent <name> <task>      - Spawn an agent for a specific task"
+    echo "  codex-agent <name> <task>      - Spawn an agent using its definition file"
+    echo "  codex-route <task>             - Auto-route task to an agent via keywords"
     echo ""
     echo -e "${BLUE}Help:${NC}"
     echo "  codex-help                     - Show this help message"
