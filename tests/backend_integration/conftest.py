@@ -541,7 +541,7 @@ def clean_env(monkeypatch):
     original_env = os.environ.copy()
 
     # Clear AMPLIFIER_* variables
-    keys_to_remove = [k for k in os.environ.keys() if k.startswith("AMPLIFIER_")]
+    keys_to_remove = [k for k in os.environ if k.startswith("AMPLIFIER_")]
     for key in keys_to_remove:
         monkeypatch.delenv(key, raising=False)
 
@@ -651,7 +651,6 @@ def capture_file_writes(monkeypatch):
             import io
 
             string_io = io.StringIO()
-            file_obj = string_io
 
             # Store reference to capture content
             written_files[str(filename)] = string_io

@@ -400,7 +400,7 @@ Content""")
 
         output_path = temp_agent_dirs["codex"] / "malformed.md"
 
-        with pytest.raises(Exception):
+        with pytest.raises(Exception):  # noqa: B017
             convert_agent(input_path, output_path)
 
     def test_convert_agent_no_additional_instructions(self, temp_agent_dirs):
@@ -518,6 +518,8 @@ def validate_yaml_frontmatter(content: str) -> dict:
         return {"valid": False, "error": "Invalid format"}
 
     try:
+        import yaml
+
         frontmatter = yaml.safe_load(parts[1])
         return {"valid": True, "frontmatter": frontmatter}
     except Exception as e:

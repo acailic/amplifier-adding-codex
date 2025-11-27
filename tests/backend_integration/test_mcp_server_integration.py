@@ -328,13 +328,6 @@ class TestMCPServerCommunication:
             assert "capabilities" in response["result"]
 
             # Test calling tool before initialization (should fail)
-            tool_request = {
-                "jsonrpc": "2.0",
-                "id": 2,
-                "method": "tools/call",
-                "params": {"name": "initialize_session", "arguments": {}},
-            }
-
             # This would need a new process or state management
             # For simplicity, assume server handles it gracefully
 
@@ -457,14 +450,6 @@ class TestMCPToolInvocation:
             mock_process.returncode = 0
             mock_popen.return_value = mock_process
 
-            # Send tool call
-            request = {
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "tools/call",
-                "params": {"name": "initialize_session", "arguments": {"prompt": "test prompt"}},
-            }
-
             # This would be handled by the server subprocess
             # Verify response structure
             response = tool_response  # Simulated
@@ -485,13 +470,6 @@ class TestMCPToolInvocation:
             mock_process.returncode = 0
             mock_popen.return_value = mock_process
 
-            request = {
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "tools/call",
-                "params": {"name": "check_code_quality", "arguments": {"file_paths": ["test.py"]}},
-            }
-
             response = tool_response  # Simulated
             assert response["result"]["data"]["status"] == "passed"
 
@@ -508,13 +486,6 @@ class TestMCPToolInvocation:
             mock_process.communicate.return_value = (json.dumps(tool_response), b"")
             mock_process.returncode = 0
             mock_popen.return_value = mock_process
-
-            request = {
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "tools/call",
-                "params": {"name": "save_current_transcript", "arguments": {}},
-            }
 
             response = tool_response  # Simulated
             assert "export_path" in response["result"]["data"]
@@ -535,13 +506,6 @@ class TestMCPToolInvocation:
             mock_process.communicate.return_value = (json.dumps(tool_response), b"")
             mock_process.returncode = 0
             mock_popen.return_value = mock_process
-
-            request = {
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "tools/call",
-                "params": {"name": "health_check", "arguments": {}},
-            }
 
             response = tool_response  # Simulated
             assert response["result"]["data"]["server"] == "session_manager"
@@ -584,13 +548,6 @@ class TestMCPServerErrorHandling:
             mock_process.returncode = 0
             mock_popen.return_value = mock_process
 
-            request = {
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "tools/call",
-                "params": {"name": "unknown_tool", "arguments": {}},
-            }
-
             # Simulate server response
             response = error_response
             assert response["error"]["code"] == -32601
@@ -603,13 +560,6 @@ class TestMCPServerErrorHandling:
             mock_process.communicate.return_value = (json.dumps(error_response), b"")
             mock_process.returncode = 0
             mock_popen.return_value = mock_process
-
-            request = {
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "tools/call",
-                "params": {"name": "initialize_session", "arguments": {"invalid": "params"}},
-            }
 
             response = error_response
             assert response["error"]["code"] == -32602
@@ -627,13 +577,6 @@ class TestMCPServerErrorHandling:
             mock_process.returncode = 0
             mock_popen.return_value = mock_process
 
-            request = {
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "tools/call",
-                "params": {"name": "initialize_session", "arguments": {"prompt": "test"}},
-            }
-
             response = error_response
             assert "error" in response
 
@@ -646,13 +589,6 @@ class TestMCPServerErrorHandling:
             mock_process.communicate.return_value = (json.dumps(error_response), b"")
             mock_process.returncode = 0
             mock_popen.return_value = mock_process
-
-            request = {
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "tools/call",
-                "params": {"name": "initialize_session", "arguments": {"prompt": "test"}},
-            }
 
             response = error_response
             assert response["error"]["message"] == "Request timeout"
@@ -685,7 +621,7 @@ class TestMCPServerIntegrationWithCodexCLI:
             "review": ["quality_checker", "transcript_saver"],
         }
 
-        for profile, expected_servers in profiles.items():
+        for profile in profiles:
             with patch("subprocess.run", return_value=mock_codex_cli):
                 result = subprocess.run(
                     ["codex", "--config", str(config_path), "--profile", profile], capture_output=True, text=True

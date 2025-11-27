@@ -83,7 +83,37 @@ ai_working/tmp
 .codex/logs/session_init.log*
 .codex/logs/session_cleanup.log*
 
+# Session monitor runtime artifacts
+.codex/session_monitor.pid
+.codex/session_monitor_config.json
+.codex/workspaces/
+
 # Agent conversion artifacts
 .codex/agents/CONVERSION_REPORT.md
 .codex/agents/*.backup
 .codex/agents/.conversion_cache/
+
+.idea/
+activity-log/
+ai_working/productivity_tracker/
+.codex/tasks/session_tasks.json
+scenarios/*
+ai_working/*
+.vscode/launch.json
+.vscode/settings.json
+ai-study-extension/manifest.json
+ai-study-extension/README.md
+ai-study-extension/test-page.html
+ai-study-extension/background/background.js
+ai-study-extension/content/content.css
+ai-study-extension/content/content.js
+ai-study-extension/popup/popup.html
+ai-study-extension/popup/popup.js
+.vscode/*
+.codex/web_cache/*
+.vscode/*
+.codex/agent_contexts/*
+.codex/agent_results/*
+.codex/background_pids.txt
+.codex/agent_analytics/*
+.codex/agentic_runs/*

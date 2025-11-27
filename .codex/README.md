@@ -97,8 +97,28 @@ Use the architect agent to analyze this codebase
 
 **Codex**: Uses `codex exec` command with agent files
 ```bash
-codex exec .codex/agents/architect.md --context="Analyze this codebase"
+codex exec --context-file=.codex/agents/architect.md "Analyze this codebase"
 ```
+
+### Agent Invocation Pattern
+
+- Agent definitions live in `.codex/agents/<name>.md` as markdown custom prompts
+- Direct CLI usage passes the definition with `codex exec --context-file=<agent_file> "<task>"`
+- Programmatic workflows generate combined files inside `.codex/agent_contexts/` that embed:
+  - Original agent definition
+  - Serialized conversation context (when available)
+  - The current task description
+- Temporary combined files are cleaned automatically after each run
+
+### Agent Context Bridge
+
+- `CodexAgentBackend` relies on the bridge to serialize context and assemble combined markdown prompts
+- Combined files follow this structure:
+  1. Agent definition content
+  2. `## Current Task Context` section with JSON payload
+  3. `## Task` section with the user request
+- Combined files are created via `create_combined_context_file()` and stored under `.codex/agent_contexts/`
+- Result artifacts remain in `.codex/agent_results/` for auditing, mirroring the previous workflow
 
 ### Configuration Management
 
@@ -203,6 +223,8 @@ args = ["run", "python", ".codex/mcp_servers/session_manager/server.py"]
    codex --profile review
    ```
 
+**Configuration File Precedence**: The project's `.codex/config.toml` is the source of truth for configuration. It gets copied to `~/.codex/config.toml` on each wrapper script invocation. Any manual edits to `~/.codex/config.toml` will be overwritten by the next wrapper script run. For persistent changes, always edit `.codex/config.toml` in the project directory.
+
 #### Configuration Best Practices
 
 - Use the `development` profile for full-featured development sessions
@@ -260,6 +282,115 @@ The configuration exposes essential environment variables:
 - `AMPLIFIER_ROOT`: Project root directory
 - `VIRTUAL_ENV`: Python virtual environment
 - `CONDA_DEFAULT_ENV`: Conda environment
+
+## Custom Prompts
+
+Codex uses custom prompts (stored in `.codex/prompts/`) as the equivalent of Claude Code's custom commands (stored in `.claude/commands/`). Custom prompts extend Codex functionality with reusable task templates and multi-agent orchestration workflows.
+
+### Available Custom Prompts
+
+#### ultrathink-task
+
+**Purpose**: Orchestrate multiple specialized agents for complex tasks requiring deep reasoning, architecture design, implementation, and validation cycles.
+
+**Invocation**:
+- **Interactive TUI**: Launch `codex`, type `/prompts:`, select `ultrathink-task`
+- **Command line**: `codex exec --context-file=.codex/prompts/ultrathink-task.md "<task>"`
+- **Wrapper script**: `./amplify-codex.sh` then use `/prompts:` menu
+
+**Arguments**:
+- `task_description` (required): Detailed description of the complex task to be accomplished
+
+**Key Features**:
+- Multi-agent coordination (zen-architect, modular-builder, bug-hunter, etc.)
+- Sequential and parallel delegation patterns
+- Architecture → Implementation → Review validation cycles
+- Integration with amplifier CLI tools via Makefile
+- Proactive contextualization for tool opportunities
+- Comprehensive task tracking and reasoning
+
+**Best used for**:
+- Complex feature implementation requiring multiple phases
+- Architecture design followed by implementation and review
+- Bug investigation requiring analysis, fix, and validation
+- Tasks benefiting from specialized agent expertise
+- Large-scale refactoring with validation steps
+
+**Source**: Converted from `.claude/commands/ultrathink-task.md`
+
+### Usage Examples
+
+**Interactive TUI Usage**:
+```bash
+# Launch Codex
+codex
+# or
+./amplify-codex.sh
+
+# In Codex session
+/prompts:
+# Select ultrathink-task
+# Provide task description: "Implement JWT authentication with refresh tokens"
+```
+
+**Command Line Usage**:
+```bash
+# Using codex exec
+codex exec --context-file=.codex/prompts/ultrathink-task.md \
+  "Refactor the API layer to use async/await patterns"
+
+# With full path
+codex exec --context-file=/path/to/project/.codex/prompts/ultrathink-task.md \
+  "Add comprehensive test coverage for authentication module"
+```
+
+**Programmatic Usage**:
+```bash
+#!/bin/bash
+TASK="Redesign the database schema for better performance"
+codex exec --context-file=.codex/prompts/ultrathink-task.md "$TASK"
+```
+
+### Comparison with Claude Code Commands
+
+| Aspect | Claude Code | Codex |
+|--------|-------------|-------|
+| **Invocation** | `/ultrathink-task <description>` | `/prompts:` → ultrathink-task |
+| **Format** | Plain Markdown | YAML frontmatter + Markdown |
+| **Arguments** | `$ARGUMENTS` variable | `{task_description}` placeholder |
+| **Task Tracking** | TodoWrite tool | Reasoning + optional MCP tools |
+| **Agent Spawning** | `Task(agent="name", task="...")` | Natural language delegation |
+| **Tools** | Task, TodoWrite, WebFetch | Read, Write, Edit, Grep, Glob, Bash |
+| **Location** | `.claude/commands/` | `.codex/prompts/` |
+| **Configuration** | Automatic discovery | Configured in `config.toml` |
+
+### Creating New Custom Prompts
+
+To create a new custom prompt:
+
+1. **Create prompt file** in `.codex/prompts/<name>.md`
+
+2. **Add YAML frontmatter**:
+   ```yaml
+   ---
+   name: my-prompt
+   description: What this prompt does
+   arguments:
+     - name: input_param
+       description: Parameter description
+       required: true
+   model: inherit
+   tools: [Read, Write, Edit]
+   ---
+   ```
+
+3. **Write prompt content** using `{argument_name}` placeholders
+
+4. **Test** with `codex` → `/prompts:` → select your prompt
+
+5. **Document** in `.codex/prompts/README.md`
+
+See `.codex/prompts/README.md` for detailed prompt creation guide and `.claude/commands/ultrathink-task.md` for the source material.
 
 ## Integration with Existing Systems
 
@@ -915,6 +1046,10 @@ These examples highlight the key visual and structural differences between the f
 - Project dependencies installed (`make install`)
 - Virtual environment activated
 
+### Configuration Management
+
+Codex CLI only reads from `~/.codex/config.toml` (the default location). The `amplify-codex.sh` wrapper script automatically copies `.codex/config.toml` to this location before launching Codex. Users should edit `.codex/config.toml` in the project directory, not `~/.codex/config.toml` directly. The `--config` flag in Codex CLI is for runtime overrides (e.g., `--config key="value"`), not for specifying config file paths.
+
 ### Quick Start with Wrapper Script
 
 > **New to Codex?** Check out our [5-minute quick start tutorial](../docs/tutorials/QUICK_START_CODEX.md) for a guided introduction.
@@ -967,20 +1102,38 @@ Amplifier provides standalone tools for session initialization and cleanup:
 
 Loads relevant memories before starting a Codex session.
 
-**Usage:**
+**Recommended Usage (via Makefile):**
 ```bash
 # Basic usage (uses default context)
-uv run python .codex/tools/session_init.py
+make session-init
 
 # With specific context
-uv run python .codex/tools/session_init.py --prompt "Refactoring authentication module"
+make session-init PROMPT="Refactoring authentication module"
+```
+
+**Direct Usage (when needed):**
+```bash
+# Basic usage (uses default context)
+.venv/bin/python .codex/tools/session_init.py
+
+# With specific context
+.venv/bin/python .codex/tools/session_init.py --prompt "Refactoring authentication module"
 
 # Custom output location
-uv run python .codex/tools/session_init.py --output ./my_context.md
+.venv/bin/python .codex/tools/session_init.py --output ./my_context.md
 
 # Verbose logging
-uv run python .codex/tools/session_init.py --verbose
+.venv/bin/python .codex/tools/session_init.py --verbose
 ```
+
+**Why `.venv/bin/python`?**
+
+The script requires project dependencies (pydantic, amplifier modules) to be available. Using `.venv/bin/python` directly:
+
+- ✅ Works in sandboxed environments (Claude Code, etc.)
+- ✅ Avoids "Operation not permitted" errors from `uv run`
+- ✅ Ensures correct Python interpreter with all dependencies
+- ✅ Bypasses cache directory permission issues
 
 **Output:**
 - `.codex/session_context.md` - Formatted memories for reference
@@ -1089,6 +1242,9 @@ tail -f .codex/logs/*.log
 # View specific server log
 tail -f .codex/logs/session_manager.log
 ```
+
+**Configuration Issues**:
+- **"Invalid override (missing '=')" error**: This occurs when using `--config` flag incorrectly with Codex CLI. The `--config` flag is for runtime key-value overrides (e.g., `--config key="value"`), not for specifying config file paths. The wrapper script automatically handles configuration file placement, so users should not need to specify config files manually. If this error appears, ensure you're using the wrapper script (`amplify-codex.sh`) instead of calling `codex` directly with config flags.
 
 ### Session Management Issues
 

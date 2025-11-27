@@ -29,12 +29,8 @@ sys.path.insert(0, str(project_root / ".codex"))
 try:
     from codex.mcp_servers.base import MCPLogger
     from codex.mcp_servers.task_tracker.server import complete_task
-    from codex.mcp_servers.task_tracker.server import create_task
-    from codex.mcp_servers.task_tracker.server import delete_task
-    from codex.mcp_servers.task_tracker.server import export_tasks
-    from codex.mcp_servers.task_tracker.server import health_check
-    from codex.mcp_servers.task_tracker.server import list_tasks
-    from codex.mcp_servers.task_tracker.server import update_task
+
+    _ = complete_task  # Mark as used for linting
 except ImportError:
     # Modules not yet implemented - tests will use mocks
     pass
@@ -133,7 +129,8 @@ class TestTaskTrackerServerInitialization:
         """Test that the server can be imported and initialized."""
         with patch("codex.mcp_servers.task_tracker.server.mcp") as mock_mcp:
             try:
-                from codex.mcp_servers.task_tracker.server import mcp
+                # Import to verify module loads
+                import codex.mcp_servers.task_tracker.server  # noqa: F401
 
                 # Server module loaded successfully
                 assert mock_mcp is not None
@@ -394,7 +391,7 @@ class TestTaskPersistence:
                     json.dumps({"session_id": "test", "tasks": [{"id": "concurrent"}]}),
                 ]
 
-                result2 = await create_task(title="Task 2", description="Test", priority="medium")
+                await create_task(title="Task 2", description="Test", priority="medium")
                 # Should handle gracefully or retry
 
             except ImportError:

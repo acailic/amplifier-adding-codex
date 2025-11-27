@@ -28,7 +28,6 @@ sys.path.insert(0, str(project_root / ".codex"))
 
 # Import modules under test (will be mocked where necessary)
 try:
-    from .codex.mcp_servers.base import AmplifierMCPServer
     from .codex.mcp_servers.base import MCPLogger
     from .codex.mcp_servers.base import check_memory_system_enabled
     from .codex.mcp_servers.base import error_response
@@ -648,7 +647,7 @@ class TestTranscriptSaver:
 
             from .codex.mcp_servers.transcript_saver.server import save_current_transcript
 
-            result = await save_current_transcript(format="extended")
+            await save_current_transcript(format="extended")
 
             # Verify format parameter was passed
             call_args = mock_transcript_exporter.export_codex_transcript.call_args
@@ -675,18 +674,21 @@ class TestTranscriptSaver:
     async def test_save_project_transcripts_incremental(self, mock_transcript_exporter, temp_project_dir):
         """Test incremental mode."""
         # Mock existing transcripts
-        with patch("os.path.exists", return_value=True):
-            with patch("sys.path", []), patch("builtins.__import__") as mock_import:
-                mock_import.side_effect = lambda name, *args, **kwargs: {
-                    ".codex.tools.transcript_exporter": mock_transcript_exporter,
-                }.get(name, Mock())
+        with (
+            patch("os.path.exists", return_value=True),
+            patch("sys.path", []),
+            patch("builtins.__import__") as mock_import,
+        ):
+            mock_import.side_effect = lambda name, *args, **kwargs: {
+                ".codex.tools.transcript_exporter": mock_transcript_exporter,
+            }.get(name, Mock())
 
-                from .codex.mcp_servers.transcript_saver.server import save_project_transcripts
+            from .codex.mcp_servers.transcript_saver.server import save_project_transcripts
 
-                result = await save_project_transcripts(incremental=True)
+            result = await save_project_transcripts(incremental=True)
 
-                # Should skip already exported sessions
-                assert result["metadata"]["skipped_existing"] >= 0
+            # Should skip already exported sessions
+            assert result["metadata"]["skipped_existing"] >= 0
 
     @pytest.mark.asyncio
     async def test_list_available_sessions(self, mock_codex_session):
@@ -780,7 +782,8 @@ class TestMCPIntegration:
             mock_mcp.return_value = mock_instance
 
             try:
-                from .codex.mcp_servers.session_manager.server import mcp
+                # Import to verify module loads
+                import codex.mcp_servers.session_manager.server  # noqa: F401
 
                 # Server module loaded successfully
                 assert mock_mcp.called
@@ -809,9 +812,7 @@ class TestMCPIntegration:
                         del sys.modules[module]
 
                 # Import should register tools
-                from .codex.mcp_servers.session_manager.server import finalize_session
-                from .codex.mcp_servers.session_manager.server import health_check
-                from .codex.mcp_servers.session_manager.server import initialize_session
+                import codex.mcp_servers.session_manager.server  # noqa: F401
 
                 # Verify tools are registered (mock would be called)
                 assert mock_instance.tool.call_count >= 3

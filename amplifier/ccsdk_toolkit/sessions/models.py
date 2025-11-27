@@ -6,6 +6,9 @@ from uuid import uuid4
 
 from pydantic import BaseModel
 from pydantic import Field
+from pydantic import model_validator
+
+from amplifier.session_monitor.models import TokenUsageSnapshot
 
 
 class SessionMetadata(BaseModel):
@@ -61,12 +64,34 @@ class SessionState(BaseModel):
         messages: List of conversation messages
         context: Any additional context data
         config: Configuration used for this session
+        checkpoint_data: Optional checkpoint data for session resume
+        token_usage_history: History of token usage snapshots
+        last_checkpoint_at: Timestamp of last checkpoint
     """
 
     metadata: SessionMetadata
     messages: list[dict[str, Any]] = Field(default_factory=list)
     context: dict[str, Any] = Field(default_factory=dict)
     config: dict[str, Any] = Field(default_factory=dict)
+    checkpoint_data: dict[str, Any] | None = None
+    token_usage_history: list[TokenUsageSnapshot] = Field(default_factory=list)
+    last_checkpoint_at: datetime | None = None
+
+    @model_validator(mode="after")
+    def _ensure_token_snapshots(self) -> "SessionState":
+        """Normalize token usage entries for backward compatibility."""
+        normalized: list[TokenUsageSnapshot] = []
+        for entry in self.token_usage_history:
+            if isinstance(entry, TokenUsageSnapshot):
+                normalized.append(entry)
+            elif isinstance(entry, dict):
+                # Older sessions stored dicts; convert them.
+                normalized.append(TokenUsageSnapshot(**entry))
+            else:
+                # Skip unexpected types but keep working to avoid breaking legacy data.
+                continue
+        self.token_usage_history = normalized
+        return self
 
     def add_message(self, role: str, content: str, metadata: dict | None = None):
         """Add a message to the session.
@@ -99,6 +124,33 @@ class SessionState(BaseModel):
             content = msg["content"]
             lines.append(f"{role}: {content}\n")
         return "\n".join(lines)
+
+    def create_checkpoint(self, data: dict[str, Any]) -> None:
+        """Create a checkpoint with the given data.
+
+        Args:
+            data: Checkpoint data to store
+        """
+        self.checkpoint_data = data
+        self.last_checkpoint_at = datetime.now()
+
+    def restore_from_checkpoint(self) -> dict[str, Any] | None:
+        """Restore checkpoint data.
+
+        Returns:
+            Checkpoint data if available, None otherwise
+        """
+        return self.checkpoint_data
+
+    def record_token_usage(self, usage: TokenUsageSnapshot) -> None:
+        """Record token usage in history.
+
+        Args:
+            usage: Token usage snapshot to record
+        """
+        if not isinstance(usage, TokenUsageSnapshot):
+            usage = TokenUsageSnapshot(**usage)
+        self.token_usage_history.append(usage)
 
     class Config:
         json_schema_extra = {

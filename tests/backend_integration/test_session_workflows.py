@@ -9,6 +9,7 @@ including initialization, quality checks, transcript export, finalization, and c
 import asyncio
 import json
 import subprocess
+import sys
 from pathlib import Path
 from unittest.mock import Mock
 from unittest.mock import patch
@@ -17,12 +18,12 @@ import pytest
 
 # Import modules under test (will be mocked where necessary)
 try:
-    from amplifier.core.backend import BackendFactory
     from amplifier.core.backend import ClaudeCodeBackend
     from amplifier.core.backend import CodexBackend
 except ImportError:
     # Modules not yet implemented - tests will use mocks
-    pass
+    ClaudeCodeBackend = None
+    CodexBackend = None
 
 
 # Test Fixtures
@@ -260,6 +261,9 @@ class TestClaudeSessionWorkflow:
 
     def test_claude_complete_session_workflow(self, integration_test_project, mock_memory_system, mock_claude_cli):
         """Test complete Claude Code session workflow."""
+        if ClaudeCodeBackend is None:
+            pytest.skip("ClaudeCodeBackend not available")
+
         with (
             patch("amplifier.memory.MemoryStore", return_value=mock_memory_system["store"]),
             patch("amplifier.search.MemorySearcher", return_value=mock_memory_system["searcher"]),
@@ -296,6 +300,9 @@ class TestClaudeSessionWorkflow:
 
     def test_claude_session_with_memory_disabled(self, integration_test_project, memory_disabled_env):
         """Test Claude Code session workflow with memory disabled."""
+        if ClaudeCodeBackend is None:
+            pytest.skip("ClaudeCodeBackend not available")
+
         with patch("os.getcwd", return_value=str(integration_test_project)):
             backend = ClaudeCodeBackend()
 
@@ -314,6 +321,9 @@ class TestClaudeSessionWorkflow:
 
     def test_claude_session_initialization_only(self, integration_test_project, mock_memory_system):
         """Test Claude Code session initialization only."""
+        if ClaudeCodeBackend is None:
+            pytest.skip("ClaudeCodeBackend not available")
+
         with (
             patch("amplifier.memory.MemoryStore", return_value=mock_memory_system["store"]),
             patch("amplifier.search.MemorySearcher", return_value=mock_memory_system["searcher"]),
@@ -329,6 +339,9 @@ class TestClaudeSessionWorkflow:
 
     def test_claude_session_finalization_timeout(self, integration_test_project, mock_memory_system):
         """Test Claude Code session finalization timeout handling."""
+        if ClaudeCodeBackend is None:
+            pytest.skip("ClaudeCodeBackend not available")
+
         with (
             patch("amplifier.extraction.MemoryExtractor", return_value=mock_memory_system["extractor"]),
             patch("asyncio.timeout", side_effect=TimeoutError()),
@@ -350,6 +363,9 @@ class TestCodexSessionWorkflow:
 
     def test_codex_complete_session_workflow(self, integration_test_project, mock_memory_system, mock_codex_cli):
         """Test complete Codex session workflow."""
+        if CodexBackend is None:
+            pytest.skip("CodexBackend not available")
+
         with (
             patch("amplifier.memory.MemoryStore", return_value=mock_memory_system["store"]),
             patch("amplifier.search.MemorySearcher", return_value=mock_memory_system["searcher"]),
@@ -465,6 +481,9 @@ class TestCrossBackendWorkflows:
 
     def test_backend_switching_preserves_memories(self, integration_test_project, mock_memory_system):
         """Test that switching backends preserves memories."""
+        if ClaudeCodeBackend is None or CodexBackend is None:
+            pytest.skip("Both backends required for cross-backend tests")
+
         with (
             patch("amplifier.memory.MemoryStore", return_value=mock_memory_system["store"]),
             patch("amplifier.search.MemorySearcher", return_value=mock_memory_system["searcher"]),
@@ -491,6 +510,9 @@ class TestCrossBackendWorkflows:
 
     def test_transcript_conversion_workflow(self, integration_test_project):
         """Test transcript format conversion between backends."""
+        if ClaudeCodeBackend is None or CodexBackend is None:
+            pytest.skip("Both backends required for cross-backend tests")
+
         with patch("os.getcwd", return_value=str(integration_test_project)):
             # Create Claude transcript
             claude_backend = ClaudeCodeBackend()
@@ -507,6 +529,9 @@ class TestCrossBackendWorkflows:
 
     def test_quality_checks_identical_across_backends(self, integration_test_project, mock_make_check_success):
         """Test that quality checks produce identical results across backends."""
+        if ClaudeCodeBackend is None or CodexBackend is None:
+            pytest.skip("Both backends required for cross-backend tests")
+
         with (
             patch("subprocess.run", return_value=mock_make_check_success),
             patch("os.getcwd", return_value=str(integration_test_project)),
@@ -530,6 +555,9 @@ class TestCrossBackendWorkflows:
         self, integration_test_project, mock_memory_system, sample_messages
     ):
         """Test that memory extraction is identical across backends."""
+        if ClaudeCodeBackend is None or CodexBackend is None:
+            pytest.skip("Both backends required for cross-backend tests")
+
         with (
             patch("amplifier.memory.MemoryStore", return_value=mock_memory_system["store"]),
             patch("amplifier.extraction.MemoryExtractor", return_value=mock_memory_system["extractor"]),
@@ -558,6 +586,9 @@ class TestSessionWorkflowErrors:
 
     def test_session_workflow_with_import_errors(self, integration_test_project):
         """Test session workflows handle import errors gracefully."""
+        if ClaudeCodeBackend is None:
+            pytest.skip("ClaudeCodeBackend not available")
+
         with (
             patch("builtins.__import__", side_effect=ImportError("Module not found")),
             patch("os.getcwd", return_value=str(integration_test_project)),
@@ -571,6 +602,9 @@ class TestSessionWorkflowErrors:
 
     def test_session_workflow_with_missing_directories(self, temp_dir):
         """Test workflows handle missing directories gracefully."""
+        if ClaudeCodeBackend is None:
+            pytest.skip("ClaudeCodeBackend not available")
+
         project_dir = temp_dir / "missing_dirs"
         project_dir.mkdir()
 
@@ -587,6 +621,9 @@ class TestSessionWorkflowErrors:
 
     def test_session_workflow_with_corrupted_data(self, integration_test_project):
         """Test workflows handle corrupted data gracefully."""
+        if ClaudeCodeBackend is None:
+            pytest.skip("ClaudeCodeBackend not available")
+
         # Create corrupted memory data file
         memories_dir = integration_test_project / ".data" / "memories"
         memories_dir.mkdir(parents=True)

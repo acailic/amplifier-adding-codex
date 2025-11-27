@@ -258,6 +258,10 @@ class AmplifierMCPServer:
     def _register_health_check(self):
         """Register the common health check tool"""
 
+        if self.mcp is None:
+            self.logger.debug("No FastMCP instance provided; skipping health check registration")
+            return
+
         @self.mcp.tool()
         async def health_check() -> dict[str, Any]:
             """Check server health and module availability"""
