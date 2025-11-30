@@ -28,6 +28,7 @@
     "type": "git",
     "url": "https://github.com/your-org/vizualni-admin.git"
   },
+  "type": "module",
   "license": "MIT",
   "author": {
     "name": "Vizualni Admin Team",
@@ -100,6 +101,8 @@
     "react-window": "^1.8.8",
     "lodash-es": "^4.17.21",
     "date-fns-tz": "^2.0.0",
+    "csv-parse": "^5.5.6",
+    "make-plural": "^7.3.0",
     "react-hotkeys-hook": "^4.4.1",
     "react-use": "^17.4.0",
     "@tanstack/react-query": "^5.8.4",
@@ -181,7 +184,7 @@
     "fonts:subset": "node scripts/subset-fonts.js",
     "demo:data": "node scripts/generate-demo-data.js",
     "pre-commit": "npm run lint && npm run typecheck && npm run test && npm run localize && npm run build",
-    "prepare": "npm run build:lib",
+    "prepare": "echo 'Skipping prepare during install'",
     "prepublishOnly": "npm run test && npm run build && npm run localize",
     "release": "semantic-release",
     "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s",
