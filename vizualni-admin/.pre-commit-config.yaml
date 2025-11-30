@@ -1,0 +1,128 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: check-docstring-first
+      - id: debug-statements
+      - id: detect-private-key
+
+  - repo: https://github.com/psf/black
+    rev: 23.7.0
+    hooks:
+      - id: black
+        files: ^scripts/.*\.py$
+
+  - repo: https://github.com/pycqa/isort
+    rev: 5.12.0
+    hooks:
+      - id: isort
+        files: ^scripts/.*\.py$
+
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v8.49.0
+    hooks:
+      - id: eslint
+        files: \.(js|ts|tsx)$
+        types: [file]
+        additional_dependencies:
+          - eslint@8.49.0
+          - "@typescript-eslint/eslint-plugin@6.7.0"
+          - "@typescript-eslint/parser@6.7.0"
+          - eslint-plugin-react@7.33.2
+          - eslint-plugin-react-hooks@4.6.0
+          - eslint-config-prettier@9.0.0
+
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.0.3
+    hooks:
+      - id: prettier
+        files: \.(js|ts|tsx|json|md|css|scss|yaml|yml)$
+        types_or: [javascript, ts, tsx, json, markdown, css, scss, yaml]
+        additional_dependencies:
+          - prettier@3.0.3
+
+  - repo: https://github.com/Lucas-C/pre-commit-hooks-nodejs
+    rev: v1.1.2
+    hooks:
+      - id: markdown-toc
+        files: README\.md
+        args: [--maxheadinglevel=3, --no-firsth1]
+
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+
+  - repo: local
+    hooks:
+      - id: typescript-check
+        name: TypeScript Check
+        entry: npm run typecheck
+        language: system
+        files: \.(ts|tsx)$
+        pass_filenames: false
+        always_run: true
+
+      - id: unit-tests
+        name: Unit Tests
+        entry: npm run test
+        language: system
+        files: \.(ts|tsx)$
+        pass_filenames: false
+        always_run: true
+
+      - id: localization-check
+        name: Localization Check
+        entry: npm run localize
+        language: system
+        files: \.(ts|tsx)$
+        pass_filenames: false
+
+      - id: accessibility-lint
+        name: Accessibility Lint
+        entry: npx eslint --config .eslintrc.a11y.js
+        language: system
+        files: \.(ts|tsx)$
+        types: [typescript]
+        additional_dependencies:
+          - eslint-plugin-jsx-a11y@6.7.1
+
+      - id: security-lint
+        name: Security Lint
+        entry: npx eslint --config .eslintrc.security.js
+        language: system
+        files: \.(ts|tsx)$
+        types: [typescript]
+        additional_dependencies:
+          - eslint-plugin-security@1.7.1
+
+      - id: bundle-size-check
+        name: Bundle Size Check
+        entry: scripts/check-bundle-size.sh
+        language: script
+        files: package.json
+        pass_filenames: false
+
+      - id: complexity-check
+        name: Complexity Check
+        entry: scripts/check-complexity.js
+        language: node
+        files: \.(ts|tsx)$
+        additional_dependencies:
+          - complexity-report@2.0.0
+
+      - id: documentation-check
+        name: Documentation Check
+        entry: scripts/check-documentation.js
+        language: node
+        files: \.(ts|tsx)$
+        pass_filenames: false
