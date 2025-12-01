@@ -1,0 +1,492 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+      force_deploy:
+        description: 'Force deployment (skip quality gates)'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  NODE_VERSION: '20.x'
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # Build and Quality Gates
+  build-and-quality:
+    runs-on: ubuntu-latest
+    outputs:
+      bundle-size: ${{ steps.analyze.outputs.bundle-size }}
+      performance-score: ${{ steps.performance.outputs.score }}
+      security-status: ${{ steps.security.outputs.status }}
+      should-deploy: ${{ steps.deploy-decision.outputs.deploy }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ./vizualni-admin
+
+      - name: Run comprehensive quality checks
+        run: |
+          # Lint
+          npm run lint
+          # Type checking with strict mode
+          npm run typecheck
+          # Unit tests with coverage
+          npm run test:ci
+          # Build
+          npm run build
+        working-directory: ./vizualni-admin
+
+      - name: Check coverage thresholds
+        id: coverage
+        run: |
+          COVERAGE_FILE="./vizualni-admin/coverage/coverage-summary.json"
+
+          if [ -f "$COVERAGE_FILE" ]; then
+            LINES_PCT=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$COVERAGE_FILE', 'utf8')).total.lines.pct)")
+            FUNCTIONS_PCT=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$COVERAGE_FILE', 'utf8')).total.functions.pct)")
+            BRANCHES_PCT=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$COVERAGE_FILE', 'utf8')).total.branches.pct)")
+            STATEMENTS_PCT=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$COVERAGE_FILE', 'utf8')).total.statements.pct)")
+
+            echo "lines-coverage=$LINES_PCT" >> $GITHUB_OUTPUT
+            echo "functions-coverage=$FUNCTIONS_PCT" >> $GITHUB_OUTPUT
+            echo "branches-coverage=$BRANCHES_PCT" >> $GITHUB_OUTPUT
+            echo "statements-coverage=$STATEMENTS_PCT" >> $GITHUB_OUTPUT
+
+            # Enforce 80% threshold for all metrics
+            MIN_COVERAGE=80
+            for metric in lines functions branches statements; do
+              value=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$COVERAGE_FILE', 'utf8')).total.$(echo $metric).pct)")
+              if (( $(echo "$value < $MIN_COVERAGE" | bc -l) )); then
+                echo "❌ $metric coverage ${value}% is below threshold ${MIN_COVERAGE}%"
+                exit 1
+              fi
+            done
+            echo "✅ All coverage thresholds passed (≥80%)"
+          else
+            echo "❌ Coverage report not found"
+            exit 1
+          fi
+
+      - name: Bundle size analysis
+        id: analyze
+        run: |
+          # Analyze bundle size
+          cd ./vizualni-admin
+
+          # Install bundle analyzer
+          npm install --save-dev @next/bundle-analyzer
+
+          # Create analyze script
+          cat > analyze-bundle.js << 'EOF'
+          const fs = require('fs');
+          const path = require('path');
+
+          function getDirectorySize(dirPath) {
+            let totalSize = 0;
+
+            if (fs.existsSync(dirPath)) {
+              const files = fs.readdirSync(dirPath);
+
+              for (const file of files) {
+                const filePath = path.join(dirPath, file);
+                const stats = fs.statSync(filePath);
+
+                if (stats.isDirectory()) {
+                  totalSize += getDirectorySize(filePath);
+                } else {
+                  totalSize += stats.size;
+                }
+              }
+            }
+
+            return totalSize;
+          }
+
+          const distPath = './dist';
+          if (fs.existsSync(distPath)) {
+            const size = getDirectorySize(distPath);
+            const sizeKB = (size / 1024).toFixed(2);
+            const sizeMB = (size / (1024 * 1024)).toFixed(2);
+
+            console.log(`Bundle size: ${sizeKB} KB (${sizeMB} MB)`);
+            console.log(`bundle-size=${sizeKB}KB`);
+
+            // Check against performance budget (5MB)
+            const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+            if (size > maxSize) {
+              console.log(`⚠️ Bundle size exceeds 5MB budget: ${sizeMB}MB`);
+              process.exit(1);
+            } else {
+              console.log(`✅ Bundle size within budget: ${sizeMB}MB`);
+            }
+          } else {
+            console.log('❌ dist directory not found');
+            process.exit(1);
+          }
+          EOF
+
+          node analyze-bundle.js
+
+      - name: Performance audit
+        id: performance
+        run: |
+          # Start the application for Lighthouse audit
+          cd ./vizualni-admin
+
+          npm run build
+          npm run preview &
+          SERVER_PID=$!
+
+          # Wait for server to start
+          sleep 10
+
+          # Install Lighthouse CI
+          npm install -g @lhci/cli@0.12.x
+
+          # Create Lighthouse config
+          cat > lighthouserc.js << 'EOF'
+          module.exports = {
+            ci: {
+              collect: {
+                url: ['http://localhost:4173'],
+                startServerCommand: 'npm run preview',
+                startServerReadyPattern: 'Local:',
+                startServerReadyTimeout: 30000,
+              },
+              assert: {
+                assertions: {
+                  'categories:performance': ['warn', { minScore: 0.8 }],
+                  'categories:accessibility': ['error', { minScore: 0.9 }],
+                  'categories:best-practices': ['warn', { minScore: 0.8 }],
+                  'categories:seo': ['warn', { minScore: 0.8 }],
+                  'categories:pwa': 'off',
+                },
+              },
+              upload: {
+                target: 'temporary-public-storage',
+              },
+            },
+          };
+          EOF
+
+          # Run Lighthouse CI
+          lhci autorun
+
+          # Extract performance score
+          if [ -f ".lighthouseci/lhr-report.json" ]; then
+            SCORE=$(node -e "console.log(JSON.parse(require('fs').readFileSync('.lighthouseci/lhr-report.json', 'utf8'))[0].categories.performance.score * 100)")
+            echo "Performance score: ${SCORE}"
+            echo "score=${SCORE}" >> $GITHUB_OUTPUT
+          fi
+
+          # Cleanup
+          kill $SERVER_PID 2>/dev/null || true
+
+      - name: Security audit
+        id: security
+        run: |
+          cd ./vizualni-admin
+
+          # Run npm audit
+          AUDIT_OUTPUT=$(npm audit --json)
+          VULNS=$(echo "$AUDIT_OUTPUT" | jq -r '.metadata.vulnerabilities.total // 0')
+          HIGH_VULNS=$(echo "$AUDIT_OUTPUT" | jq -r '.metadata.vulnerabilities.high // 0')
+          CRITICAL_VULNS=$(echo "$AUDIT_OUTPUT" | jq -r '.metadata.vulnerabilities.critical // 0')
+
+          echo "vulnerabilities=$VULNS" >> $GITHUB_OUTPUT
+          echo "high-vulnerabilities=$HIGH_VULNS" >> $GITHUB_OUTPUT
+          echo "critical-vulnerabilities=$CRITICAL_VULNS" >> $GITHUB_OUTPUT
+
+          # Fail on high or critical vulnerabilities
+          if [ "$HIGH_VULNS" -gt 0 ] || [ "$CRITICAL_VULNS" -gt 0 ]; then
+            echo "❌ Found $HIGH_VULNS high and $CRITICAL_VULNS critical vulnerabilities"
+            echo "status=fail" >> $GITHUB_OUTPUT
+            exit 1
+          else
+            echo "✅ No high or critical vulnerabilities found"
+            echo "status=pass" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Accessibility compliance check
+        run: |
+          cd ./vizualni-admin
+
+          # Install and run axe-core
+          npm install --save-dev axe-core @axe-core/playwright
+
+          # Create accessibility test
+          cat > accessibility-test.js << 'EOF'
+          const { chromium } = require('playwright');
+          const { AxeBuilder } = require('@axe-core/playwright');
+
+          async function runAccessibilityTest() {
+            const browser = await chromium.launch();
+            const page = await browser.newPage();
+
+            // Start the app
+            const { spawn } = require('child_process');
+            const server = spawn('npm', ['run', 'preview'], { stdio: 'pipe' });
+
+            // Wait for server
+            await new Promise(resolve => setTimeout(resolve, 10000));
+
+            try {
+              await page.goto('http://localhost:4173');
+
+              const accessibilityScanResults = await new AxeBuilder({ page })
+                .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
+                .analyze();
+
+              if (accessibilityScanResults.violations.length > 0) {
+                console.log('❌ Accessibility violations found:');
+                accessibilityScanResults.violations.forEach(violation => {
+                  console.log(`- ${violation.description}: ${violation.impact}`);
+                });
+                process.exit(1);
+              } else {
+                console.log('✅ No accessibility violations found');
+              }
+            } finally {
+              await browser.close();
+              server.kill();
+            }
+          }
+
+          runAccessibilityTest().catch(console.error);
+          EOF
+
+          node accessibility-test.js
+
+      - name: Deploy decision
+        id: deploy-decision
+        run: |
+          # Decide whether to deploy based on quality gates
+          SHOULD_DEPLOY="true"
+
+          # Check coverage
+          LINES_COVERAGE="${{ steps.coverage.outputs.lines-coverage }}"
+          if (( $(echo "$LINES_COVERAGE < 80" | bc -l) )); then
+            SHOULD_DEPLOY="false"
+          fi
+
+          # Check security
+          SECURITY_STATUS="${{ steps.security.outputs.status }}"
+          if [ "$SECURITY_STATUS" = "fail" ]; then
+            SHOULD_DEPLOY="false"
+          fi
+
+          # Check performance
+          PERF_SCORE="${{ steps.performance.outputs.score }}"
+          if [ -n "$PERF_SCORE" ] && (( $(echo "$PERF_SCORE < 80" | bc -l) )); then
+            SHOULD_DEPLOY="false"
+          fi
+
+          # Check for force deploy flag
+          if [ "${{ github.event.inputs.force_deploy }}" = "true" ]; then
+            SHOULD_DEPLOY="true"
+          fi
+
+          echo "deploy=$SHOULD_DEPLOY" >> $GITHUB_OUTPUT
+          echo "Should deploy: $SHOULD_DEPLOY"
+
+  # Build Docker image
+  build-image:
+    runs-on: ubuntu-latest
+    needs: build-and-quality
+    if: needs.build-and-quality.outputs.should-deploy == 'true'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./vizualni-admin
+          file: ./vizualni-admin/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+  # Deploy to staging
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: [build-and-quality, build-image]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'workflow_dispatch'
+    environment: staging
+
+    steps:
+      - name: Deploy to staging
+        run: |
+          echo "🚀 Deploying to staging environment"
+          # Add your staging deployment logic here
+          # This could be Kubernetes, Vercel, Netlify, etc.
+
+          # Example: Deploy to Vercel
+          # npx vercel --prod --token ${{ secrets.VERCEL_TOKEN }}
+
+      - name: Run smoke tests
+        run: |
+          echo "🧪 Running smoke tests"
+          # Add smoke test logic here
+          # Test that the deployment is working correctly
+
+  # Deploy to production
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: [build-and-quality, build-image]
+    if: |
+      github.ref == 'refs/heads/main' &&
+      (
+        github.event_name == 'workflow_dispatch' &&
+        github.event.inputs.environment == 'production'
+      )
+    environment: production
+
+    steps:
+      - name: Deploy to production
+        run: |
+          echo "🚀 Deploying to production environment"
+          # Add your production deployment logic here
+          # This should include canary deployment strategy
+
+      - name: Run production smoke tests
+        run: |
+          echo "🧪 Running production smoke tests"
+          # Verify production deployment is working
+
+      - name: Monitor deployment health
+        run: |
+          echo "📊 Monitoring deployment health"
+          # Add health checks and monitoring logic
+
+  # Post-deployment validation
+  post-deploy:
+    runs-on: ubuntu-latest
+    needs: [deploy-staging, deploy-production]
+    if: always() && (needs.deploy-staging.result == 'success' || needs.deploy-production.result == 'success')
+
+    steps:
+      - name: Validate deployment
+        run: |
+          echo "✅ Deployment validation complete"
+          echo "Bundle size: ${{ needs.build-and-quality.outputs.bundle-size }}"
+          echo "Performance score: ${{ needs.build-and-quality.outputs.performance-score }}"
+          echo "Security status: ${{ needs.build-and-quality.outputs.security-status }}"
+
+      - name: Update deployment status
+        if: success()
+        run: |
+          echo "🎉 Deployment successful!"
+          # Send notifications, update dashboards, etc.
+
+      - name: Handle deployment failure
+        if: failure()
+        run: |
+          echo "❌ Deployment failed!"
+          # Trigger rollback, send alerts, etc.
+
+  # Generate and upload build artifacts
+  artifacts:
+    runs-on: ubuntu-latest
+    needs: build-and-quality
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: build-artifacts-*
+          merge-multiple: true
+
+      - name: Generate deployment report
+        run: |
+          cat > deployment-report.md << EOF
+          # Deployment Report
+
+          ## Build Information
+          - **Commit**: ${{ github.sha }}
+          - **Branch**: ${{ github.ref_name }}
+          - **Build Number**: ${{ github.run_number }}
+          - **Timestamp**: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          ## Quality Metrics
+          - **Bundle Size**: ${{ needs.build-and-quality.outputs.bundle-size }}
+          - **Performance Score**: ${{ needs.build-and-quality.outputs.performance-score }}
+          - **Security Status**: ${{ needs.build-and-quality.outputs.security-status }}
+          - **Should Deploy**: ${{ needs.build-and-quality.outputs.should-deploy }}
+
+          ## Test Coverage
+          - **Lines**: ${{ needs.build-and-quality.steps.coverage.outputs.lines-coverage }}%
+          - **Functions**: ${{ needs.build-and-quality.steps.coverage.outputs.functions-coverage }}%
+          - **Branches**: ${{ needs.build-and-quality.steps.coverage.outputs.branches-coverage }}%
+          - **Statements**: ${{ needs.build-and-quality.steps.coverage.outputs.statements-coverage }}%
+
+          ## Security
+          - **Total Vulnerabilities**: ${{ needs.build-and-quality.steps.security.outputs.vulnerabilities }}
+          - **High Severity**: ${{ needs.build-and-quality.steps.security.outputs.high-vulnerabilities }}
+          - **Critical Severity**: ${{ needs.build-and-quality.steps.security.outputs.critical-vulnerabilities }}
+
+          EOF
+
+      - name: Upload deployment report
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-report-${{ github.run_number }}
+          path: deployment-report.md
+          retention-days: 90

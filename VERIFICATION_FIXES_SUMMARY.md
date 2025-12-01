@@ -42,6 +42,7 @@ Implemented 4 out of 13 verification comments. The remaining 9 comments require 
 - Changed second `--context-file` to `--context` for session context
 - Properly initialized `context_file` variable to avoid undefined errors
 - Clear separation: `--agent=<agent.md>` for definition, `--context=<ctx.json>` for session data
+- **Update 2025-11:** Codex CLI has since removed both flags—`spawn_agent` now pipes the combined agent/context prompt into `codex exec -` via stdin, and manuals should reference `scripts/codex_prompt.py`.
 
 **Files Changed**:
 - `amplifier/core/agent_backend.py` (spawn_agent method)

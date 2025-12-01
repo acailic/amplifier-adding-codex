@@ -1,0 +1,115 @@
+{
+  "navigation": {
+    "dashboard": "Dashboard",
+    "budget": "Budget",
+    "demographics": "Demographics",
+    "airQuality": "Air Quality",
+    "energy": "Energy",
+    "settings": "Settings",
+    "logout": "Logout"
+  },
+  "dashboard": {
+    "title": "Visual Admin Panel",
+    "subtitle": "Analysis and visualization of Serbian data",
+    "overview": "Overview",
+    "totalDatasets": "Total Datasets",
+    "lastUpdated": "Last Updated",
+    "dataSources": "Data Sources",
+    "quickActions": "Quick Actions",
+    "viewAllData": "View All Data",
+    "exportData": "Export Data"
+  },
+  "budget": {
+    "title": "Budget Analysis",
+    "subtitle": "Overview of budget funds and expenditures",
+    "totalBudget": "Total Budget",
+    "revenue": "Revenue",
+    "expenses": "Expenses",
+    "byCategory": "By Category",
+    "byMunicipality": "By Municipality",
+    "monthlyTrend": "Monthly Trend",
+    "yearOverYear": "Year Over Year"
+  },
+  "demographics": {
+    "title": "Demographics Analysis",
+    "subtitle": "Population and demographic characteristics",
+    "totalPopulation": "Total Population",
+    "populationDensity": "Population Density",
+    "ageDistribution": "Age Distribution",
+    "genderDistribution": "Gender Distribution",
+    "migration": "Migration",
+    "birthRate": "Birth Rate",
+    "deathRate": "Death Rate"
+  },
+  "airQuality": {
+    "title": "Air Quality",
+    "subtitle": "Air quality monitoring in Serbia",
+    "airQualityIndex": "Air Quality Index",
+    "pollutants": "Pollutants",
+    "pm25": "PM2.5",
+    "pm10": "PM10",
+    "no2": "NO₂",
+    "so2": "SO₂",
+    "co": "CO",
+    "o3": "O₃",
+    "good": "Good",
+    "moderate": "Moderate",
+    "unhealthy": "Unhealthy",
+    "veryUnhealthy": "Very Unhealthy",
+    "hazardous": "Hazardous"
+  },
+  "energy": {
+    "title": "Energy Analysis",
+    "subtitle": "Energy consumption and production",
+    "totalConsumption": "Total Consumption",
+    "renewableEnergy": "Renewable Energy",
+    "consumptionBySector": "Consumption by Sector",
+    "productionBySource": "Production by Source",
+    "efficiency": "Efficiency",
+    "imports": "Imports",
+    "exports": "Exports"
+  },
+  "charts": {
+    "loading": "Loading...",
+    "noData": "No data available",
+    "error": "Error loading data",
+    "export": "Export chart",
+    "fullscreen": "Fullscreen",
+    "refresh": "Refresh"
+  },
+  "filters": {
+    "dateRange": "Date Range",
+    "municipality": "Municipality",
+    "category": "Category",
+    "source": "Source",
+    "apply": "Apply",
+    "reset": "Reset",
+    "allMunicipalities": "All Municipalities",
+    "allCategories": "All Categories"
+  },
+  "table": {
+    "search": "Search...",
+    "previous": "Previous",
+    "next": "Next",
+    "showing": "Showing",
+    "of": "of",
+    "entries": "entries",
+    "noResults": "No results"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "delete": "Delete",
+    "view": "View",
+    "download": "Download",
+    "upload": "Upload",
+    "close": "Close",
+    "confirm": "Confirm",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "warning": "Warning",
+    "info": "Info"
+  }
+}

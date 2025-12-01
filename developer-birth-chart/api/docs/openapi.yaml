@@ -1,0 +1,1859 @@
+openapi: 3.0.3
+info:
+  title: Developer Birth Chart API
+  description: |
+    Comprehensive API for the Personalized Developer Birth Chart project.
+
+    This API enables:
+    - GitHub profile analysis with astrological-style personality insights
+    - Social media sharing and viral marketing
+    - Team compatibility and dynamics analysis
+    - Marketplace features with Stripe Connect
+    - Real-time analytics and monitoring
+
+    ## Authentication
+
+    Most endpoints require authentication via GitHub OAuth or API keys. Include your token in the Authorization header:
+
+    ```
+    Authorization: Bearer <your-token>
+    ```
+
+    ## Rate Limiting
+
+    - **Free tier**: 100 requests per hour
+    - **Premium tier**: 1000 requests per hour
+    - **Enterprise tier**: 5000 requests per hour
+
+    Rate limit headers are included in all responses.
+  version: 1.0.0
+  contact:
+    name: Developer Birth Chart Support
+    email: support@developerbirthchart.com
+    url: https://developerbirthchart.com/support
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+servers:
+  - url: https://api.developerbirthchart.com/v1
+    description: Production server
+  - url: https://staging-api.developerbirthchart.com/v1
+    description: Staging server
+  - url: http://localhost:3000/api/v1
+    description: Development server
+
+paths:
+  /chart/generate:
+    post:
+      tags:
+        - Birth Charts
+      summary: Generate Developer Birth Chart
+      description: |
+        Generate a comprehensive birth chart analysis for a GitHub user.
+        This includes personality analysis, tech stack evaluation, career insights,
+        and collaboration patterns based on GitHub activity and contributions.
+      operationId: generateBirthChart
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BirthChartRequest'
+            examples:
+              basic:
+                summary: Basic request
+                value:
+                  username: "octocat"
+                  includePrivate: false
+              detailed:
+                summary: Detailed analysis
+                value:
+                  username: "torvalds"
+                  includePrivate: true
+                  analysisDepth: "comprehensive"
+      responses:
+        '200':
+          description: Birth chart generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BirthChartResponse'
+              examples:
+                success:
+                  summary: Successful generation
+                  value:
+                    $ref: '#/components/examples/BirthChartExample'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /chart/{chartId}:
+    get:
+      tags:
+        - Birth Charts
+      summary: Get Birth Chart
+      description: Retrieve a previously generated birth chart by ID.
+      operationId: getBirthChart
+      parameters:
+        - name: chartId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique identifier for the birth chart
+      responses:
+        '200':
+          description: Birth chart retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BirthChartResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /team/analyze:
+    post:
+      tags:
+        - Team Analysis
+      summary: Analyze Team Compatibility
+      description: |
+        Analyze compatibility and dynamics between multiple developers.
+        This provides insights into team composition, collaboration styles,
+        communication patterns, and potential conflicts or synergies.
+      operationId: analyzeTeam
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamAnalysisRequest'
+            examples:
+              basic:
+                summary: Basic team analysis
+                value:
+                  usernames: ["user1", "user2", "user3"]
+                  depth: "basic"
+              comprehensive:
+                summary: Comprehensive analysis
+                value:
+                  usernames: ["developer1", "developer2", "developer3", "developer4", "developer5"]
+                  organization: "company"
+                  depth: "comprehensive"
+                  includeHistoricalData: true
+      responses:
+        '200':
+          description: Team analysis completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamAnalysisResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+
+  /team/build:
+    post:
+      tags:
+        - Team Analysis
+      summary: Build Optimal Team
+      description: |
+        Build an optimal team composition based on required roles and available developers.
+        Uses AI algorithms to match personalities, skills, and collaboration styles for maximum team effectiveness.
+      operationId: buildOptimalTeam
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamBuilderRequest'
+      responses:
+        '200':
+          description: Optimal team composition generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamBuilderResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /compatibility/check:
+    post:
+      tags:
+        - Compatibility
+      summary: Check Developer Compatibility
+      description: Check compatibility between two developers based on their birth chart analyses.
+      operationId: checkCompatibility
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompatibilityRequest'
+      responses:
+        '200':
+          description: Compatibility analysis completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompatibilityResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /share/{platform}:
+    post:
+      tags:
+        - Social Media
+      summary: Share Birth Chart
+      description: Share a generated birth chart to social media platforms.
+      operationId: shareChart
+      parameters:
+        - name: platform
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [twitter, linkedin, discord, instagram]
+          description: Target social media platform
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShareRequest'
+      responses:
+        '200':
+          description: Chart shared successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShareResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          description: Platform-specific error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /social/image/{chartId}:
+    get:
+      tags:
+        - Social Media
+      summary: Generate Shareable Image
+      description: Generate a shareable image for the birth chart optimized for social media.
+      operationId: generateShareableImage
+      parameters:
+        - name: chartId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: platform
+          in: query
+          schema:
+            type: string
+            enum: [twitter, linkedin, instagram, discord]
+            default: twitter
+        - name: theme
+          in: query
+          schema:
+            type: string
+            enum: [dark, light, astrology, tech]
+            default: astrology
+      responses:
+        '200':
+          description: Image generated successfully
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /analytics/track:
+    post:
+      tags:
+        - Analytics
+      summary: Track Analytics Event
+      description: Track custom analytics events for monitoring and insights.
+      operationId: trackAnalytics
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnalyticsEvent'
+      responses:
+        '200':
+          description: Event tracked successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  eventId:
+                    type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /insights/{username}:
+    get:
+      tags:
+        - Insights
+      summary: Get Career Insights
+      description: Get detailed career insights and recommendations for a developer.
+      operationId: getCareerInsights
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+          description: GitHub username
+        - name: includePredictions
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Career insights retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CareerInsightsResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /subscriptions/plans:
+    get:
+      tags:
+        - Subscriptions
+      summary: Get Subscription Plans
+      description: Retrieve available subscription plans and pricing.
+      operationId: getSubscriptionPlans
+      responses:
+        '200':
+          description: Subscription plans retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionPlansResponse'
+
+  /subscriptions/create:
+    post:
+      tags:
+        - Subscriptions
+      summary: Create Subscription
+      description: Create a new subscription for premium features.
+      operationId: createSubscription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSubscriptionRequest'
+      responses:
+        '200':
+          description: Subscription created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '402':
+          description: Payment required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /marketplace/products:
+    get:
+      tags:
+        - Marketplace
+      summary: Get Marketplace Products
+      description: Retrieve available products and services in the marketplace.
+      operationId: getMarketplaceProducts
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+            enum: [consulting, code-review, mentorship, training, tools]
+        - name: minPrice
+          in: query
+          schema:
+            type: number
+            minimum: 0
+        - name: maxPrice
+          in: query
+          schema:
+            type: number
+            minimum: 0
+      responses:
+        '200':
+          description: Products retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarketplaceProductsResponse'
+
+  /marketplace/purchase:
+    post:
+      tags:
+        - Marketplace
+      summary: Purchase Marketplace Product
+      description: Purchase a product or service from the marketplace.
+      operationId: purchaseMarketplaceProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PurchaseRequest'
+      responses:
+        '200':
+          description: Purchase completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurchaseResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '402':
+          description: Payment required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    BirthChartRequest:
+      type: object
+      required:
+        - username
+      properties:
+        username:
+          type: string
+          description: GitHub username to analyze
+          example: "octocat"
+        includePrivate:
+          type: boolean
+          description: Include private repositories in analysis (requires authentication)
+          default: false
+        analysisDepth:
+          type: string
+          enum: [basic, detailed, comprehensive]
+          description: Depth of analysis to perform
+          default: "detailed"
+        includeHistoricalData:
+          type: boolean
+          description: Include historical trend analysis
+          default: false
+
+    BirthChartResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the birth chart
+        userId:
+          type: string
+          format: uuid
+          description: User ID who requested the chart
+        githubUsername:
+          type: string
+          description: GitHub username analyzed
+        birthDate:
+          type: string
+          format: date-time
+          description: GitHub account creation date
+        personality:
+          $ref: '#/components/schemas/PersonalityAnalysis'
+        skills:
+          $ref: '#/components/schemas/SkillAnalysis'
+        career:
+          $ref: '#/components/schemas/CareerAnalysis'
+        social:
+          $ref: '#/components/schemas/SocialAnalysis'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PersonalityAnalysis:
+      type: object
+      properties:
+        zodiacSign:
+          type: string
+          description: Astrological zodiac sign based on GitHub join date
+          example: "Leo"
+        personalityType:
+          type: string
+          description: MBTI-like personality type based on coding patterns
+          example: "INTJ - The Architect"
+        traits:
+          type: array
+          items:
+            type: string
+          description: Key personality traits identified
+          example: ["Analytical", "Innovative", "Independent", "Strategic"]
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Confidence score for personality analysis
+          example: 87
+        insights:
+          type: array
+          items:
+            type: string
+          description: Personality insights and recommendations
+          example: ["Strong analytical skills make you excellent at debugging", "Independence suggests you work best with autonomy"]
+
+    SkillAnalysis:
+      type: object
+      properties:
+        languages:
+          type: array
+          items:
+            $ref: '#/components/schemas/LanguageSkill'
+        frameworks:
+          type: array
+          items:
+            $ref: '#/components/schemas/FrameworkSkill'
+        tools:
+          type: array
+          items:
+            $ref: '#/components/schemas/ToolSkill'
+        expertise:
+          type: array
+          items:
+            type: string
+          description: Areas of expertise
+          example: ["Backend Development", "Database Design", "API Architecture"]
+        growthAreas:
+          type: array
+          items:
+            type: string
+          description: Recommended areas for skill growth
+          example: ["Frontend Development", "DevOps", "Machine Learning"]
+
+    LanguageSkill:
+      type: object
+      properties:
+        language:
+          type: string
+          description: Programming language name
+          example: "JavaScript"
+        proficiency:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Proficiency percentage
+          example: 85
+        repositories:
+          type: integer
+          description: Number of repositories using this language
+          example: 12
+        experience:
+          type: string
+          description: Experience level
+          example: "Expert"
+
+    FrameworkSkill:
+      type: object
+      properties:
+        framework:
+          type: string
+          description: Framework name
+          example: "React"
+        proficiency:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Proficiency percentage
+          example: 90
+        projects:
+          type: integer
+          description: Number of projects using this framework
+          example: 8
+        experience:
+          type: string
+          description: Experience level
+          example: "Advanced"
+
+    ToolSkill:
+      type: object
+      properties:
+        tool:
+          type: string
+          description: Tool name
+          example: "Docker"
+        proficiency:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Proficiency percentage
+          example: 75
+        usage:
+          type: string
+          description: How the tool is used
+          example: "Containerization and deployment"
+
+    CareerAnalysis:
+      type: object
+      properties:
+        careerPath:
+          type: string
+          description: Recommended career path
+          example: "Senior Software Engineer → Tech Lead → Engineering Manager"
+        trajectory:
+          $ref: '#/components/schemas/CareerTrajectory'
+        milestones:
+          type: array
+          items:
+            $ref: '#/components/schemas/CareerMilestone'
+        recommendations:
+          type: array
+          items:
+            type: string
+          description: Career recommendations
+          example: ["Consider pursuing architecture roles", "Develop leadership skills"]
+        potential:
+          $ref: '#/components/schemas/CareerPotential'
+
+    CareerTrajectory:
+      type: object
+      properties:
+        current:
+          $ref: '#/components/schemas/CareerStage'
+        next:
+          type: array
+          items:
+            $ref: '#/components/schemas/CareerStage'
+        timeline:
+          type: array
+          items:
+            type: string
+          description: Predicted timeline for career progression
+          example: ["1-2 years: Senior Developer", "3-5 years: Tech Lead", "5+ years: Engineering Manager"]
+
+    CareerStage:
+      type: object
+      properties:
+        title:
+          type: string
+          description: Career stage title
+          example: "Senior Software Engineer"
+        level:
+          type: string
+          description: Career level
+          example: "Senior"
+        skills:
+          type: array
+          items:
+            type: string
+          description: Required skills for this stage
+          example: ["System Design", "Code Review", "Mentoring"]
+        timeframe:
+          type: string
+          description: Expected timeframe to reach this stage
+          example: "2-3 years"
+
+    CareerMilestone:
+      type: object
+      properties:
+        title:
+          type: string
+          description: Milestone title
+          example: "First Open Source Contribution"
+        description:
+          type: string
+          description: Milestone description
+          example: "Contributed to a major open source project"
+        date:
+          type: string
+          format: date-time
+          description: Date milestone was achieved
+        impact:
+          type: string
+          description: Impact of milestone
+          example: "Established reputation in the community"
+        repositories:
+          type: array
+          items:
+            type: string
+          description: Related repositories
+        skills:
+          type: array
+          items:
+            type: string
+          description: Skills demonstrated
+
+    CareerPotential:
+      type: object
+      properties:
+        seniorDeveloper:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Likelihood of success as senior developer
+          example: 92
+        techLead:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Likelihood of success as tech lead
+          example: 78
+        engineeringManager:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Likelihood of success as engineering manager
+          example: 65
+        cto:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Likelihood of success as CTO
+          example: 45
+        founder:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Likelihood of success as founder
+          example: 70
+        consultant:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Likelihood of success as consultant
+          example: 88
+
+    SocialAnalysis:
+      type: object
+      properties:
+        collaboration:
+          $ref: '#/components/schemas/CollaborationStyle'
+        influence:
+          $ref: '#/components/schemas/InfluenceScore'
+        community:
+          $ref: '#/components/schemas/CommunityEngagement'
+        network:
+          $ref: '#/components/schemas/NetworkAnalysis'
+
+    CollaborationStyle:
+      type: object
+      properties:
+        style:
+          type: string
+          description: Collaboration style
+          example: "Independent Contributor"
+        preferences:
+          type: array
+          items:
+            type: string
+          description: Collaboration preferences
+          example: ["Code Review", "Documentation", "Mentoring"]
+        communication:
+          type: string
+          description: Communication style
+          example: "Clear and Direct"
+        teamwork:
+          type: string
+          description: Teamwork approach
+          example: "Task-oriented with minimal supervision"
+
+    InfluenceScore:
+      type: object
+      properties:
+        score:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Overall influence score
+          example: 73
+        reach:
+          type: integer
+          description: Reach metrics (followers, connections)
+          example: 1250
+        engagement:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Engagement rate
+          example: 68
+        impact:
+          type: string
+          description: Impact description
+          example: "Moderate influence in JavaScript community"
+
+    CommunityEngagement:
+      type: object
+      properties:
+        level:
+          type: string
+          description: Community engagement level
+          example: "Active Contributor"
+        activities:
+          type: array
+          items:
+            type: string
+          description: Community activities
+          example: ["Open Source Contributions", "Technical Writing", "Conference Speaking"]
+        contributions:
+          type: array
+          items:
+            type: string
+          description: Notable contributions
+          example: ["Popular npm packages", "Conference talks"]
+        recognition:
+          type: array
+          items:
+            type: string
+          description: Recognition and awards
+          example: ["GitHub Star Award", "Speaker at Tech Conference"]
+
+    NetworkAnalysis:
+      type: object
+      properties:
+        connections:
+          type: integer
+          description: Number of professional connections
+          example: 234
+        collaborators:
+          type: array
+          items:
+            $ref: '#/components/schemas/Collaborator'
+        influence:
+          type: string
+          description: Network influence level
+          example: "Regional"
+        reach:
+          type: string
+          description: Network reach
+          example: "JavaScript Developer Community"
+
+    Collaborator:
+      type: object
+      properties:
+        username:
+          type: string
+          description: Collaborator username
+          example: "contributor123"
+        name:
+          type: string
+          description: Collaborator display name
+          example: "Jane Doe"
+        collaborationType:
+          type: array
+          items:
+            type: string
+          description: Types of collaboration
+          example: ["Co-development", "Code Review", "Mentoring"]
+        projects:
+          type: array
+          items:
+            type: string
+          description: Shared projects
+          example: ["awesome-project", "tool-repo"]
+        strength:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Collaboration strength score
+          example: 85
+
+    TeamAnalysisRequest:
+      type: object
+      required:
+        - usernames
+      properties:
+        usernames:
+          type: array
+          items:
+            type: string
+          description: GitHub usernames to analyze
+          minItems: 2
+          maxItems: 20
+          example: ["user1", "user2", "user3", "user4", "user5"]
+        organization:
+          type: string
+          description: Organization name (optional)
+          example: "acme-corp"
+        depth:
+          type: string
+          enum: [basic, detailed, comprehensive]
+          description: Analysis depth
+          default: "detailed"
+        includeHistoricalData:
+          type: boolean
+          description: Include historical analysis
+          default: false
+
+    TeamAnalysisResponse:
+      type: object
+      properties:
+        teamId:
+          type: string
+          format: uuid
+          description: Unique team analysis ID
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/TeamMember'
+        dynamics:
+          $ref: '#/components/schemas/TeamDynamics'
+        recommendations:
+          type: array
+          items:
+            $ref: '#/components/schemas/TeamRecommendation'
+        synergy:
+          $ref: '#/components/schemas/TeamSynergy'
+        generatedAt:
+          type: string
+          format: date-time
+
+    TeamMember:
+      type: object
+      properties:
+        username:
+          type: string
+          description: GitHub username
+          example: "developer123"
+        role:
+          type: string
+          description: Recommended team role
+          example: "Backend Developer"
+        personality:
+          $ref: '#/components/schemas/PersonalityAnalysis'
+        skills:
+          $ref: '#/components/schemas/SkillAnalysis'
+        collaboration:
+          $ref: '#/components/schemas/CollaborationStyle'
+        fitScore:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: How well the member fits the team
+          example: 92
+
+    TeamDynamics:
+      type: object
+      properties:
+        communicationStyle:
+          type: string
+          description: Team's communication style
+          example: "Direct and Technical"
+        decisionMaking:
+          type: string
+          description: Decision-making approach
+          example: "Data-driven Consensus"
+        conflictResolution:
+          type: string
+          description: Conflict resolution style
+          example: "Collaborative Problem Solving"
+        productivity:
+          type: string
+          description: Expected productivity level
+          example: "High"
+        innovation:
+          type: string
+          description: Innovation potential
+          example: "Very High"
+
+    TeamRecommendation:
+      type: object
+      properties:
+        category:
+          type: string
+          description: Recommendation category
+          example: "Communication"
+        recommendation:
+          type: string
+          description: Specific recommendation
+          example: "Establish regular code reviews to improve knowledge sharing"
+        priority:
+          type: string
+          enum: [high, medium, low]
+          description: Recommendation priority
+          example: "medium"
+        impact:
+          type: string
+          description: Expected impact
+          example: "Improved code quality and team knowledge"
+
+    TeamSynergy:
+      type: object
+      properties:
+        overall:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Overall team synergy score
+          example: 85
+        technical:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Technical synergy score
+          example: 92
+        creative:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Creative synergy score
+          example: 78
+        leadership:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Leadership synergy score
+          example: 65
+        communication:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Communication synergy score
+          example: 88
+
+    TeamBuilderRequest:
+      type: object
+      required:
+        - requiredRoles
+        - availableUsers
+      properties:
+        requiredRoles:
+          type: array
+          items:
+            type: string
+          description: Required roles for the team
+          example: ["Frontend Developer", "Backend Developer", "DevOps Engineer", "UI/UX Designer"]
+        availableUsers:
+          type: array
+          items:
+            type: string
+          description: Available GitHub usernames
+          example: ["user1", "user2", "user3", "user4", "user5", "user6", "user7"]
+        optimizationGoal:
+          type: string
+          enum: [balanced, technical, creative, leadership]
+          description: Team optimization goal
+          default: "balanced"
+        teamSize:
+          type: integer
+          minimum: 2
+          maximum: 10
+          description: Desired team size
+          example: 4
+
+    TeamBuilderResponse:
+      type: object
+      properties:
+        teamId:
+          type: string
+          format: uuid
+          description: Unique team ID
+        assignments:
+          type: array
+          items:
+            $ref: '#/components/schemas/TeamAssignment'
+        effectiveness:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Team effectiveness score
+          example: 87
+        alternatives:
+          type: array
+          items:
+            $ref: '#/components/schemas/AlternativeTeam'
+          description: Alternative team compositions
+
+    TeamAssignment:
+      type: object
+      properties:
+        role:
+          type: string
+          description: Assigned role
+          example: "Frontend Developer"
+        user:
+          type: string
+          description: Assigned GitHub username
+          example: "frontend-expert"
+        matchScore:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: How well the user matches the role
+          example: 94
+        reasoning:
+          type: string
+          description: Reason for assignment
+          example: "Strong React skills and good collaboration style"
+
+    AlternativeTeam:
+      type: object
+      properties:
+        assignments:
+          type: array
+          items:
+            $ref: '#/components/schemas/TeamAssignment'
+        effectiveness:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Team effectiveness score
+          example: 82
+        tradeoffs:
+          type: array
+          items:
+            type: string
+          description: Tradeoffs compared to optimal team
+          example: ["Slightly lower technical synergy", "Better creative balance"]
+
+    CompatibilityRequest:
+      type: object
+      required:
+        - user1
+        - user2
+      properties:
+        user1:
+          type: string
+          description: First GitHub username
+          example: "developer1"
+        user2:
+          type: string
+          description: Second GitHub username
+          example: "developer2"
+        analysisDepth:
+          type: string
+          enum: [basic, detailed]
+          description: Compatibility analysis depth
+          default: "detailed"
+
+    CompatibilityResponse:
+      type: object
+      properties:
+        user1:
+          type: string
+          description: First username
+          example: "developer1"
+        user2:
+          type: string
+          description: Second username
+          example: "developer2"
+        score:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Overall compatibility score
+          example: 78
+        connectionType:
+          type: string
+          description: Type of connection
+          example: "Complementary Skills"
+        aspects:
+          type: array
+          items:
+            $ref: '#/components/schemas/CompatibilityAspect'
+        recommendations:
+          type: array
+          items:
+            type: string
+          description: Recommendations for working together
+          example: ["Consider pair programming", "Leverage complementary technical skills"]
+
+    CompatibilityAspect:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Aspect name
+          example: "Technical Skills"
+        score:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Aspect compatibility score
+          example: 85
+        description:
+          type: string
+          description: Aspect description
+          example: "Strong complementary technical skills"
+
+    ShareRequest:
+      type: object
+      required:
+        - chartId
+      properties:
+        chartId:
+          type: string
+          format: uuid
+          description: Birth chart ID to share
+        message:
+          type: string
+          description: Custom message (optional)
+        image:
+          type: boolean
+          description: Include generated image
+          default: true
+        customizations:
+          type: object
+          description: Platform-specific customizations
+          properties:
+            hashtags:
+              type: array
+              items:
+                type: string
+            mentions:
+              type: array
+              items:
+                type: string
+
+    ShareResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Share success status
+        url:
+          type: string
+          description: URL to shared content
+        postId:
+          type: string
+          description: Platform-specific post ID
+        error:
+          type: string
+          description: Error message if sharing failed
+
+    AnalyticsEvent:
+      type: object
+      required:
+        - event
+      properties:
+        event:
+          type: string
+          description: Event name
+          example: "chart_generated"
+        userId:
+          type: string
+          format: uuid
+          description: User ID (optional)
+        properties:
+          type: object
+          description: Event properties
+          example:
+            username: "octocat"
+            personalityType: "INTJ"
+            processingTime: 2500
+        timestamp:
+          type: string
+          format: date-time
+          description: Event timestamp
+        platform:
+          type: string
+          description: Platform (optional)
+        version:
+          type: string
+          description: App version
+
+    CareerInsightsResponse:
+      type: object
+      properties:
+        username:
+          type: string
+          description: GitHub username
+          example: "octocat"
+        trajectory:
+          $ref: '#/components/schemas/CareerTrajectory'
+        recommendations:
+          type: array
+          items:
+            type: string
+          description: Career recommendations
+          example: ["Focus on architecture roles", "Develop leadership skills"]
+        skillsToDevelop:
+          type: array
+          items:
+            type: string
+          description: Recommended skills to develop
+          example: ["Cloud Architecture", "Team Management", "DevOps"]
+        marketTrends:
+          type: array
+          items:
+            type: string
+          description: Relevant market trends
+          example: ["AI Integration", "Edge Computing", "Serverless Architecture"]
+        salaryProjection:
+          type: object
+          properties:
+            current:
+              type: number
+              description: Current estimated salary range
+              example: 120000
+            projected:
+              type: number
+              description: Projected salary in 3-5 years
+              example: 180000
+            currency:
+              type: string
+              description: Currency code
+              example: "USD"
+
+    SubscriptionPlansResponse:
+      type: object
+      properties:
+        plans:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubscriptionPlan'
+
+    SubscriptionPlan:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Plan ID
+          example: "premium_monthly"
+        name:
+          type: string
+          description: Plan name
+          example: "Premium Monthly"
+        description:
+          type: string
+          description: Plan description
+          example: "Advanced analytics and team features"
+        price:
+          type: number
+          description: Price in cents
+          example: 2900
+        currency:
+          type: string
+          description: Currency code
+          example: "usd"
+        interval:
+          type: string
+          enum: [month, year]
+          description: Billing interval
+          example: "month"
+        features:
+          type: array
+          items:
+            type: string
+          description: Plan features
+          example: ["Unlimited charts", "Team analysis", "API access", "Priority support"]
+        trialPeriodDays:
+          type: integer
+          description: Trial period in days
+          example: 14
+        isActive:
+          type: boolean
+          description: Whether plan is currently active
+          example: true
+
+    CreateSubscriptionRequest:
+      type: object
+      required:
+        - planId
+        - paymentMethodId
+      properties:
+        planId:
+          type: string
+          description: Plan ID to subscribe to
+          example: "premium_monthly"
+        paymentMethodId:
+          type: string
+          description: Payment method ID
+          example: "pm_1234567890"
+        customerId:
+          type: string
+          description: Customer ID (optional for new customers)
+        trialPeriodDays:
+          type: integer
+          description: Custom trial period days
+          minimum: 0
+          maximum: 90
+          example: 30
+
+    SubscriptionResponse:
+      type: object
+      properties:
+        subscriptionId:
+          type: string
+          description: Subscription ID
+          example: "sub_1234567890"
+        status:
+          type: string
+          enum: [active, trialing, past_due, canceled, unpaid]
+          description: Subscription status
+          example: "active"
+        currentPeriodEnd:
+          type: string
+          format: date-time
+          description: Current period end date
+        cancelAtPeriodEnd:
+          type: boolean
+          description: Whether subscription will cancel at period end
+        plan:
+          $ref: '#/components/schemas/SubscriptionPlan'
+
+    MarketplaceProductsResponse:
+      type: object
+      properties:
+        products:
+          type: array
+          items:
+            $ref: '#/components/schemas/MarketplaceProduct'
+        filters:
+          type: object
+          description: Available filters
+          properties:
+            categories:
+              type: array
+              items:
+                type: string
+            priceRange:
+              type: object
+              properties:
+                min:
+                  type: number
+                max:
+                  type: number
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    MarketplaceProduct:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Product ID
+          example: "consulting_code_review"
+        name:
+          type: string
+          description: Product name
+          example: "Code Review Consulting"
+        description:
+          type: string
+          description: Product description
+          example: "Expert code review and architectural guidance"
+        seller:
+          $ref: '#/components/schemas/SellerInfo'
+        category:
+          type: string
+          enum: [consulting, code-review, mentorship, training, tools]
+          description: Product category
+          example: "consulting"
+        price:
+          type: number
+          description: Price in cents
+          example: 15000
+        currency:
+          type: string
+          description: Currency code
+          example: "usd"
+        duration:
+          type: string
+          description: Service duration
+          example: "2 hours"
+        features:
+          type: array
+          items:
+            type: string
+          description: Product features
+          example: ["Detailed code review", "Best practices guidance", "Architectural recommendations"]
+        rating:
+          type: number
+          minimum: 0
+          maximum: 5
+          description: Average rating
+          example: 4.8
+        reviewCount:
+          type: integer
+          description: Number of reviews
+          example: 24
+        availability:
+          type: string
+          enum: [available, busy, unavailable]
+          description: Availability status
+          example: "available"
+
+    SellerInfo:
+      type: object
+      properties:
+        userId:
+          type: string
+          description: Seller user ID
+          example: "user_123456789"
+        username:
+          type: string
+          description: Seller GitHub username
+          example: "expert-developer"
+        displayName:
+          type: string
+          description: Seller display name
+          example: "Jane Doe"
+        bio:
+          type: string
+          description: Seller bio
+          example: "Senior Software Engineer with 10+ years experience"
+        avatar:
+          type: string
+          description: Avatar URL
+          example: "https://github.com/expert-developer.png"
+        verified:
+          type: boolean
+          description: Whether seller is verified
+          example: true
+        responseTime:
+          type: string
+          description: Average response time
+          example: "Within 24 hours"
+
+    PurchaseRequest:
+      type: object
+      required:
+        - productId
+        - paymentMethodId
+      properties:
+        productId:
+          type: string
+          description: Product ID to purchase
+          example: "consulting_code_review"
+        paymentMethodId:
+          type: string
+          description: Payment method ID
+          example: "pm_1234567890"
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 10
+          description: Purchase quantity
+          default: 1
+          example: 1
+        customization:
+          type: object
+          description: Product customization options
+          example:
+            focus: ["security", "performance"]
+            urgency: "high"
+        notes:
+          type: string
+          description: Additional notes for the seller
+          example: "Focus on security best practices"
+
+    PurchaseResponse:
+      type: object
+      properties:
+        purchaseId:
+          type: string
+          description: Purchase ID
+          example: "pur_1234567890"
+        status:
+          type: string
+          enum: [pending, completed, failed, refunded]
+          description: Purchase status
+          example: "completed"
+        product:
+          $ref: '#/components/schemas/MarketplaceProduct'
+        transaction:
+          $ref: '#/components/schemas/TransactionRecord'
+        estimatedDelivery:
+          type: string
+          description: Estimated delivery time
+          example: "Within 48 hours"
+
+    TransactionRecord:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Transaction ID
+          example: "txn_1234567890"
+        customerId:
+          type: string
+          description: Customer ID
+          example: "cus_1234567890"
+        sellerId:
+          type: string
+          description: Seller ID
+          example: "acct_1234567890"
+        productId:
+          type: string
+          description: Product ID
+          example: "consulting_code_review"
+        amount:
+          type: number
+          description: Transaction amount in cents
+          example: 15000
+        currency:
+          type: string
+          description: Currency code
+          example: "usd"
+        fee:
+          type: number
+          description: Platform fee in cents
+          example: 1500
+        netAmount:
+          type: number
+          description: Net amount to seller in cents
+          example: 13500
+        status:
+          type: string
+          enum: [pending, succeeded, failed, refunded]
+          description: Transaction status
+          example: "succeeded"
+        description:
+          type: string
+          description: Transaction description
+          example: "Payment for consulting_code_review"
+        createdAt:
+          type: string
+          format: date-time
+          description: Transaction creation date
+        updatedAt:
+          type: string
+          format: date-time
+          description: Transaction update date
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+          description: Current page number
+          example: 1
+        limit:
+          type: integer
+          description: Items per page
+          example: 20
+        total:
+          type: integer
+          description: Total number of items
+          example: 156
+        totalPages:
+          type: integer
+          description: Total number of pages
+          example: 8
+        hasNext:
+          type: boolean
+          description: Whether there are more pages
+          example: true
+        hasPrev:
+          type: boolean
+          description: Whether there are previous pages
+          example: false
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Error type
+          example: "ValidationError"
+        message:
+          type: string
+          description: Error message
+          example: "Invalid username provided"
+        code:
+          type: string
+          description: Error code
+          example: "INVALID_USERNAME"
+        details:
+          type: object
+          description: Additional error details
+          example:
+            field: "username"
+            reason: "Username contains invalid characters"
+        timestamp:
+          type: string
+          format: date-time
+          description: Error timestamp
+        requestId:
+          type: string
+          description: Request ID for tracing
+          example: "req_1234567890"
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Forbidden:
+      description: Access forbidden
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    RateLimitExceeded:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          headers:
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+                example: 100
+              description: Rate limit quota
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+                example: 87
+              description: Remaining quota
+            X-RateLimit-Reset:
+              schema:
+                type: integer
+                example: 1640995200
+              description: Rate limit reset timestamp
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  examples:
+    BirthChartExample:
+      summary: Complete birth chart response
+      value:
+        id: "550e8400-e29b-41d4-a716-446655440000"
+        userId: "550e8400-e29b-41d4-a716-446655440001"
+        githubUsername: "octocat"
+        birthDate: "2011-01-25T18:44:36Z"
+        personality:
+          zodiacSign: "Aquarius"
+          personalityType: "INTJ - The Architect"
+          traits: ["Analytical", "Innovative", "Independent", "Strategic"]
+          confidence: 87
+          insights: ["Strong analytical skills make you excellent at debugging", "Independence suggests you work best with autonomy"]
+        skills:
+          languages:
+            - language: "JavaScript"
+              proficiency: 85
+              repositories: 12
+              experience: "Expert"
+            - language: "Python"
+              proficiency: 72
+              repositories: 8
+              experience: "Advanced"
+            - language: "Ruby"
+              proficiency: 45
+              repositories: 3
+              experience: "Intermediate"
+          frameworks:
+            - framework: "Node.js"
+              proficiency: 88
+              projects: 10
+              experience: "Expert"
+            - framework: "React"
+              proficiency: 76
+              projects: 6
+              experience: "Advanced"
+          expertise: ["Backend Development", "Database Design", "API Architecture"]
+          growthAreas: ["Frontend Development", "DevOps", "Machine Learning"]
+        career:
+          careerPath: "Senior Software Engineer → Tech Lead → Engineering Manager"
+          potential:
+            seniorDeveloper: 92
+            techLead: 78
+            engineeringManager: 65
+            cto: 45
+            founder: 70
+            consultant: 88
+          recommendations: ["Consider pursuing architecture roles", "Develop leadership skills"]
+        social:
+          collaboration:
+            style: "Independent Contributor"
+            communication: "Clear and Direct"
+            teamwork: "Task-oriented with minimal supervision"
+          influence:
+            score: 73
+            reach: 1250
+            engagement: 68
+            impact: "Moderate influence in JavaScript community"
+        createdAt: "2024-01-15T10:30:00Z"
+        updatedAt: "2024-01-15T10:30:00Z"
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT authentication token
+
+tags:
+  - name: Birth Charts
+    description: Core birth chart generation and analysis endpoints
+  - name: Team Analysis
+    description: Team compatibility and dynamics analysis
+  - name: Compatibility
+    description: Developer compatibility checking
+  - name: Social Media
+    description: Social media sharing and image generation
+  - name: Analytics
+    description: Analytics tracking and insights
+  - name: Insights
+    description: Career insights and recommendations
+  - name: Subscriptions
+    description: Subscription management and billing
+  - name: Marketplace
+    description: Developer services marketplace
+
+externalDocs:
+  description: Developer Birth Chart Documentation
+  url: https://developerbirthchart.com/docs

@@ -14,8 +14,6 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from typing import Iterable
-
 
 AGENTS_DIR = Path(__file__).resolve().parent.parent / "agents"
 

@@ -42,6 +42,7 @@ This document summarizes the implementation of all 13 verification comments.
 - Removed duplicate `--context-file` flags
 - Properly separated agent definition from context data
 - Added proper `context_file` initialization to avoid undefined variable errors
+- **Update 2025-11:** Codex CLI removed both flags entirely; the backend now pipes the combined agent/context markdown to `codex exec -` via stdin (see `scripts/codex_prompt.py` usage).
 
 **Files Modified**:
 - `amplifier/core/agent_backend.py`

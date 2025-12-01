@@ -1,0 +1,200 @@
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+/* Custom CSS Variables for cosmic theme */
+:root {
+  --cosmic-bg: #0f0f23;
+  --cosmic-surface: #1a1a2e;
+  --cosmic-card: #16213e;
+  --cosmic-accent: #e94560;
+  --cosmic-star: #ffd700;
+  --cosmic-nebula: #8a2be2;
+  --cosmic-text-primary: #ffffff;
+  --cosmic-text-secondary: #a0a0a0;
+  --cosmic-gradient-start: #0f0f23;
+  --cosmic-gradient-end: #1a1a2e;
+}
+
+/* Dark theme base styles */
+.dark {
+  color-scheme: dark;
+}
+
+/* Reset and base styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background-color: var(--cosmic-bg);
+  color: var(--cosmic-text-primary);
+  overflow-x: hidden;
+  /* Prevent pull-to-refresh on mobile */
+  overscroll-behavior: contain;
+  /* Enable momentum scrolling on iOS */
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Hide scrollbar but keep functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Custom scrollbar for webkit browsers */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: var(--cosmic-surface);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--cosmic-nebula);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--cosmic-accent);
+}
+
+/* Focus styles for accessibility */
+.focus-visible:focus-visible {
+  outline: 2px solid var(--cosmic-accent);
+  outline-offset: 2px;
+}
+
+/* Remove tap highlight on mobile */
+.no-tap-highlight {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Safe area support for notched phones */
+.safe-area-inset {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Loading animations */
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.shimmer {
+  animation: shimmer 2s infinite;
+  background: linear-gradient(90deg, var(--cosmic-surface) 25%, var(--cosmic-card) 50%, var(--cosmic-surface) 75%);
+  background-size: 1000px 100%;
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, var(--cosmic-star), var(--cosmic-nebula), var(--cosmic-accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glass morphism effect */
+.glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Star field background */
+.star-field {
+  background:
+    radial-gradient(2px 2px at 20px 30px, var(--cosmic-star), transparent),
+    radial-gradient(2px 2px at 40px 70px, var(--cosmic-nebula), transparent),
+    radial-gradient(1px 1px at 50px 50px, var(--cosmic-star), transparent),
+    radial-gradient(1px 1px at 80px 10px, var(--cosmic-star), transparent),
+    radial-gradient(2px 2px at 130px 80px, var(--cosmic-nebula), transparent),
+    var(--cosmic-bg);
+  background-repeat: repeat;
+  background-size: 200px 200px;
+}
+
+/* Constellation pattern */
+.constellation-bg {
+  background-image:
+    radial-gradient(circle at 25% 25%, var(--cosmic-nebula) 0%, transparent 50%),
+    radial-gradient(circle at 75% 75%, var(--cosmic-accent) 0%, transparent 50%),
+    var(--cosmic-bg);
+}
+
+/* Mobile-specific optimizations */
+@media (max-width: 768px) {
+  html {
+    font-size: 14px;
+  }
+
+  /* Reduce motion for better performance on mobile */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .glass {
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+  }
+}
+
+/* Dark mode media query */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+  }
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+  }
+}
+
+/* Landscape mobile optimizations */
+@media (max-width: 768px) and (orientation: landscape) {
+  .landscape-hidden {
+    display: none;
+  }
+}
