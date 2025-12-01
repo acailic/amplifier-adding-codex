@@ -117,3 +117,197 @@ ai-study-extension/popup/popup.js
 .codex/background_pids.txt
 .codex/agent_analytics/*
 .codex/agentic_runs/*
+
+# Additional files discovered during review
+testfile
+*.tgz
+*.tar.gz
+*.backup
+*.bak
+*~
+
+# Editor and IDE temp files
+*.swp
+*.swo
+*.swn
+*~
+.vimrc.tmp
+*.sublime-*
+
+# macOS specific (in addition to .DS_Store)
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# IDE and editor files
+.vscode/settings.json
+.vscode/launch.json
+.vscode/extensions.json
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.idea/
+
+# Temporary files and processes
+*.pid
+*.lock
+*.temp
+*.tmp
+.cache/
+temp/
+tmp/
+
+# Python additional ignores
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# Environments
+.envrc
+.venv.bak/
+
+# Rust
+target/
+Cargo.lock
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+*.iml
+*.ipr
+*.iws
+.mvn/
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!.mvn/wrapper/maven-wrapper.properties
+
+# Gradle
+.gradle
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+.gradletasknamecache
+
+# Additional lock files (keep root-level ones)
+**/package-lock.json
+**/yarn.lock
+
+# Local configuration files
+config.local.*
+settings.local.*
+local.*
+*.local.js
+*.local.json
+
+# Test outputs
+test-results/
+coverage/
+.nyc_output/
+junit.xml
+
+# Build artifacts in subdirectories
+**/dist/
+**/build/
+**/out/
+**/target/
+**/bin/
+**/obj/
+
+# Documentation build artifacts
+**/docs/.vitepress/dist/
+**/.vitepress/dist/
+**/.vitepress/cache/
+
+# Storybook build outputs
+**/storybook-static/
+
+# Next.js specific
+.next/
+out/
+
+# Vite build outputs
+dist-ssr/
+
+# Logs not covered by existing patterns
+logs/
+*.out
+
+# Local development files
+.local/
+.local_state/
+.mgrep_state/
+
+# Archive files
+*.zip
+*.rar
+*.7z
+*.tar
+*.bz2
+*.xz
+
+# Database files (additional)
+*.mdb
+*.accdb
+*.sqlite*
+
+# Performance test results
+performance-results/
+benchmarks/results/
+*.perf
+
+# Security scan results
+security-reports/
+*.security
+
+# LLM/AI tool artifacts (additional)
+.ai-cache/
+.llm-cache/
+.agent-sessions/
+
+# Compressed archives in node_modules should stay, but ignore others
+*.tgz
+!node_modules/**/*.tgz
+*.tar.gz
+!node_modules/**/*.tar.gz
+
+# Temporary scripts that should be versioned elsewhere
+temp-*.sh
+temp-*.py
+temp-*.js
+*.temp.*
+
+# Development utilities
+dev-utils/
+scripts/temp/
+scripts/tmp/

@@ -1,7 +1,7 @@
 ---
 name: agent-name
 description: When to use this agent and what it does
-tools: [Read, Grep, Glob, Bash]
+tools: [Read, Grep, Glob, Bash, mgrep]
 model: inherit
 ---
 ```

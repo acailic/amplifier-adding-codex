@@ -1,4 +1,10 @@
 {
+  "env": {
+    "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
+    "ANTHROPIC_AUTH_TOKEN": "c092912855464480a6e3efe006713eb9.QBz6tNzP1u0Q1TwI",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "GLM-4.6",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "GLM-4.6"
+  },
   "permissions": {
     "allow": [
       "Bash",
@@ -14,7 +20,7 @@
       ".vscode",
       ".claude",
       ".ai",
-      "~/amplifier"
+      "."
     ]
   },
   "enableAllProjectMcpServers": false,

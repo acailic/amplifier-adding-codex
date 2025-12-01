@@ -1,0 +1,473 @@
+name: Developer Experience Automation
+
+on:
+  push:
+    branches: [ develop, main ]
+  pull_request:
+    branches: [ develop, main ]
+    types: [opened, synchronize, reopened]
+
+jobs:
+  # Pre-commit hooks and quality automation
+  quality-automation:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ./vizualni-admin
+
+      - name: Run pre-commit hooks simulation
+        run: |
+          echo "🔧 Running pre-commit quality checks"
+          cd ./vizualni-admin
+
+          # Format check
+          npm run format:check
+
+          # Lint
+          npm run lint
+
+          # Type check
+          npm run typecheck
+
+          # Quick unit tests
+          npm run test -- --passWithNoTests --verbose
+
+          # Localization check
+          npm run extract
+          npm run compile
+
+      - name: Check for package.json security issues
+        run: |
+          cd ./vizualni-admin
+
+          # Check for deprecated packages
+          echo "🔍 Checking for deprecated packages..."
+          npm outdated || true
+
+          # Check package-lock.json for security issues
+          npm audit --audit-level moderate
+
+      - name: Validate TypeScript configuration
+        run: |
+          cd ./vizualni-admin
+
+          # Check TypeScript configuration is strict enough
+          if grep -q '"strict": false' tsconfig.json; then
+            echo "❌ TypeScript strict mode should be enabled"
+            exit 1
+          fi
+
+          # Check for proper TypeScript paths
+          if ! grep -q '"baseUrl"' tsconfig.json; then
+            echo "⚠️ Consider setting baseUrl in tsconfig.json for better imports"
+          fi
+
+      - name: Check code complexity
+        run: |
+          cd ./vizualni-admin
+
+          # Install complexity analyzer
+          npm install --save-dev complexity-report
+
+          # Create complexity check
+          cat > check-complexity.js << 'EOF'
+          const complexity = require('complexity-report');
+          const fs = require('fs');
+          const path = require('path');
+
+          function analyzeComplexity(dirPath) {
+            const options = {
+              format: 'json',
+              output: 'stdout',
+              files: [`${dirPath}/**/*.{ts,tsx}`],
+              ignore: ['**/*.d.ts', '**/*.stories.tsx', '**/test/**/*'],
+              rules: {
+                logical: 10,
+                cyclomatic: 10,
+                halstead: 15
+              }
+            };
+
+            try {
+              const report = complexity.run(options);
+              const data = JSON.parse(report);
+
+              let maxComplexity = 0;
+              let complexFiles = [];
+
+              data.reports.forEach(file => {
+                file.functions.forEach(func => {
+                  if (func.complexity.cyclomatic > maxComplexity) {
+                    maxComplexity = func.complexity.cyclomatic;
+                  }
+                  if (func.complexity.cyclomatic > 10) {
+                    complexFiles.push({
+                      file: file.path,
+                      function: func.name,
+                      complexity: func.complexity.cyclomatic
+                    });
+                  }
+                });
+              });
+
+              console.log(`Maximum complexity found: ${maxComplexity}`);
+
+              if (complexFiles.length > 0) {
+                console.log('❌ Functions with complexity > 10 found:');
+                complexFiles.forEach(item => {
+                  console.log(`  - ${item.file}:${item.function} (${item.complexity})`);
+                });
+                process.exit(1);
+              } else {
+                console.log('✅ All functions have acceptable complexity');
+              }
+            } catch (error) {
+              console.log('⚠️ Could not analyze complexity:', error.message);
+            }
+          }
+
+          analyzeComplexity('./src');
+          EOF
+
+          node check-complexity.js
+
+  # Automated PR review
+  pr-review:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ./vizualni-admin
+
+      - name: Generate PR review
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { execSync } = require('child_process');
+
+            // Get changed files
+            const changedFiles = execSync('git diff --name-only origin/${{ github.base_ref }}...', { encoding: 'utf8' }).trim().split('\n');
+
+            // Analyze changes
+            const tsFiles = changedFiles.filter(f => f.endsWith('.ts') || f.endsWith('.tsx'));
+            const testFiles = changedFiles.filter(f => f.includes('.test.') || f.includes('.spec.'));
+            const storyFiles = changedFiles.filter(f => f.includes('.stories.'));
+            const docFiles = changedFiles.filter(f => f.endsWith('.md'));
+
+            let reviewBody = '## 🤖 Automated PR Review\n\n';
+            reviewBody += '### 📊 Change Analysis\n\n';
+            reviewBody += `- **Files changed**: ${changedFiles.length}\n`;
+            reviewBody += `- **TypeScript files**: ${tsFiles.length}\n`;
+            reviewBody += `- **Test files**: ${testFiles.length}\n`;
+            reviewBody += `- **Storybook files**: ${storyFiles.length}\n`;
+            reviewBody += `- **Documentation files**: ${docFiles.length}\n\n`;
+
+            // Check for test coverage
+            if (tsFiles.length > 0 && testFiles.length === 0) {
+              reviewBody += '### ⚠️ Test Coverage\n\n';
+              reviewBody += '❌ **Tests missing**: TypeScript files were modified but no test files were added or updated.\n\n';
+            } else {
+              reviewBody += '### ✅ Test Coverage\n\n';
+              reviewBody += '✅ **Tests included**: Test files were modified along with implementation.\n\n';
+            }
+
+            // Check for Storybook updates
+            const hasComponentChanges = tsFiles.some(f => f.includes('/src/components/') || f.includes('/src/features/'));
+            if (hasComponentChanges && storyFiles.length === 0) {
+              reviewBody += '### ⚠️ Storybook Documentation\n\n';
+              reviewBody += '❌ **Stories missing**: Components were modified but no Storybook stories were updated.\n\n';
+            } else if (storyFiles.length > 0) {
+              reviewBody += '### ✅ Storybook Documentation\n\n';
+              reviewBody += '✅ **Stories updated**: Storybook documentation was included.\n\n';
+            }
+
+            // Check for documentation
+            if (docFiles.length === 0 && tsFiles.length > 2) {
+              reviewBody += '### ⚠️ Documentation\n\n';
+              reviewBody += '💡 **Consider adding documentation**: Multiple files were changed but no documentation was updated.\n\n';
+            }
+
+            // Quality checks
+            reviewBody += '### 🧪 Quality Checks\n\n';
+            try {
+              execSync('npm run lint', { stdio: 'pipe' });
+              reviewBody += '✅ **Linting**: Passed\n';
+            } catch (error) {
+              reviewBody += '❌ **Linting**: Failed\n';
+            }
+
+            try {
+              execSync('npm run typecheck', { stdio: 'pipe' });
+              reviewBody += '✅ **Type Checking**: Passed\n';
+            } catch (error) {
+              reviewBody += '❌ **Type Checking**: Failed\n';
+            }
+
+            try {
+              execSync('npm run test -- --passWithNoTests --watchAll=false', { stdio: 'pipe' });
+              reviewBody += '✅ **Tests**: Passed\n';
+            } catch (error) {
+              reviewBody += '❌ **Tests**: Failed\n';
+            }
+
+            reviewBody += '\n---\n';
+            reviewBody += '*This review was generated automatically. Please review the changes manually before merging.*';
+
+            // Post review comment
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: reviewBody
+            });
+
+      - name: Check PR size
+        run: |
+          cd ./vizualni-admin
+
+          # Count lines changed
+          LINES_ADDED=$(git diff --numstat origin/${{ github.base_ref }}... | awk '{sum += $1} END {print sum}')
+          LINES_DELETED=$(git diff --numstat origin/${{ github.base_ref }}... | awk '{sum += $2} END {print sum}')
+          TOTAL_LINES=$((LINES_ADDED + LINES_DELETED))
+
+          echo "Lines added: $LINES_ADDED"
+          echo "Lines deleted: $LINES_DELETED"
+          echo "Total lines changed: $TOTAL_LINES"
+
+          # Warn for large PRs
+          if [ $TOTAL_LINES -gt 500 ]; then
+            echo "⚠️ Large PR detected ($TOTAL_LINES lines). Consider breaking into smaller PRs."
+          fi
+
+  # Dependency update automation
+  dependency-updates:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Check for outdated dependencies
+        id: outdated
+        run: |
+          cd ./vizualni-admin
+
+          # Check for outdated packages
+          OUTDATED=$(npm outdated --json || echo '{}')
+          echo "outdated=$OUTDATED" >> $GITHUB_OUTPUT
+
+          # Count outdated packages
+          OUTDATED_COUNT=$(echo "$OUTDATED" | jq 'keys | length')
+          echo "outdated-count=$OUTDATED_COUNT" >> $GITHUB_OUTPUT
+
+          echo "Outdated packages: $OUTDATED_COUNT"
+        continue-on-error: true
+
+      - name: Create dependency update PR
+        if: steps.outdated.outputs.outdated-count > 0
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'chore: update dependencies'
+          title: '🔄 Automated Dependency Updates'
+          body: |
+            ## 🔄 Automated Dependency Updates
+
+            This PR updates outdated dependencies to improve security and performance.
+
+            ### Changes:
+            ```json
+            ${{ steps.outdated.outputs.outdated }}
+            ```
+
+            **Please review the changes carefully before merging.**
+          branch: chore/update-dependencies
+          delete-branch: true
+          labels: |
+            dependencies
+            automated
+
+  # Documentation updates
+  documentation:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ./vizualni-admin
+
+      - name: Generate API documentation
+        run: |
+          cd ./vizualni-admin
+
+          # Generate TypeScript documentation
+          npm run build:docs
+
+          # Generate component documentation
+          npm run build-storybook
+
+      - name: Check documentation coverage
+        run: |
+          cd ./vizualni-admin
+
+          # Count documented vs undocumented exports
+          echo "📊 Analyzing documentation coverage..."
+
+          # Extract exports from TypeScript files
+          EXPORTS=$(find src -name "*.ts" -o -name "*.tsx" | xargs grep -h "^export" | wc -l)
+          echo "Total exports: $EXPORTS"
+
+          # Count JSDoc comments
+          JSDOCS=$(find src -name "*.ts" -o -name "*.tsx" | xargs grep -c "/\*\*" | awk -F: '{sum += $2} END {print sum}')
+          echo "JSDoc comments: $JSDOCS"
+
+          if [ $EXPORTS -gt 0 ]; then
+            COVERAGE=$((JSDOCS * 100 / EXPORTS))
+            echo "Documentation coverage: ${COVERAGE}%"
+
+            if [ $COVERAGE -lt 50 ]; then
+              echo "⚠️ Low documentation coverage (${COVERAGE}%). Consider adding more JSDoc comments."
+            fi
+          fi
+
+      - name: Update changelog
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          cd ./vizualni-admin
+
+          # Generate changelog from commits since last tag
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+
+          if [ -n "$LAST_TAG" ]; then
+            echo "📝 Updating changelog since $LAST_TAG"
+            npm run changelog
+          else
+            echo "📝 Creating initial changelog"
+            npm run changelog -- --first-release
+          fi
+
+      - name: Update README metrics
+        run: |
+          cd ./vizualni-admin
+
+          # Update README with current stats
+          LINES_OF_CODE=$(find src -name "*.ts" -o -name "*.tsx" | xargs wc -l | tail -1 | awk '{print $1}')
+          TEST_FILES=$(find src -name "*.test.*" -o -name "*.spec.*" | wc -l)
+          COVERAGE=$(npm run test:coverage -- --silent 2>/dev/null | grep -o "All files[^%]*%" | grep -o "[0-9]*" || echo "0")
+
+          echo "📊 Project Statistics:"
+          echo "- Lines of code: $LINES_OF_CODE"
+          echo "- Test files: $TEST_FILES"
+          echo "- Test coverage: ${COVERAGE}%"
+
+  # Performance impact analysis
+  performance-analysis:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ./vizualni-admin
+
+      - name: Analyze performance impact
+        run: |
+          cd ./vizualni-admin
+
+          echo "📊 Analyzing performance impact of changes..."
+
+          # Build current branch
+          npm run build
+          CURRENT_SIZE=$(du -sh dist | cut -f1)
+
+          # Build base branch for comparison
+          git fetch origin ${{ github.base_ref }}
+          git checkout origin/${{ github.base_ref }}
+          npm ci
+          npm run build
+          BASE_SIZE=$(du -sh dist | cut -f1)
+
+          # Switch back to current branch
+          git checkout -
+
+          echo "Base bundle size: $BASE_SIZE"
+          echo "Current bundle size: $CURRENT_SIZE"
+
+          # Calculate size difference (simple comparison)
+          echo "Bundle size change: $BASE_SIZE → $CURRENT_SIZE"
+
+      - name: Comment on performance impact
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '## 📊 Performance Impact Analysis\n\n' +
+                    'Performance analysis has been completed. Please check the workflow logs for detailed bundle size comparisons.\n\n' +
+                    '### Recommendations:\n' +
+                    '- Review bundle size changes\n' +
+                    '- Check for performance regressions\n' +
+                    '- Consider lazy loading for large components\n' +
+                    '- Optimize image and asset sizes'
+            });

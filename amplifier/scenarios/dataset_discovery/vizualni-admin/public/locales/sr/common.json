@@ -1,0 +1,115 @@
+{
+  "navigation": {
+    "dashboard": "Kontrolna tabla",
+    "budget": "Budžet",
+    "demographics": "Demografija",
+    "airQuality": "Kvalitet vazduha",
+    "energy": "Energija",
+    "settings": "Podešavanja",
+    "logout": "Odjava"
+  },
+  "dashboard": {
+    "title": "Vizuelni Admin Panel",
+    "subtitle": "Analiza i vizuelizacija srpskih podataka",
+    "overview": "Pregled",
+    "totalDatasets": "Ukupno skupova podataka",
+    "lastUpdated": "Poslednje ažuriranje",
+    "dataSources": "Izvori podataka",
+    "quickActions": "Brze akcije",
+    "viewAllData": "Pregled svih podataka",
+    "exportData": "Izvoz podataka"
+  },
+  "budget": {
+    "title": "Budžetska analiza",
+    "subtitle": "Pregled budžetskih sredstava i troškova",
+    "totalBudget": "Ukupan budžet",
+    "revenue": "Prihodi",
+    "expenses": "Rashodi",
+    "byCategory": "Po kategorijama",
+    "byMunicipality": "Po opštinama",
+    "monthlyTrend": "Mesečni trend",
+    "yearOverYear": "Godišnje poređenje"
+  },
+  "demographics": {
+    "title": "Demografska analiza",
+    "subtitle": "Stanovništvo i demografske karakteristike",
+    "totalPopulation": "Ukupno stanovništvo",
+    "populationDensity": "Gustina naseljenosti",
+    "ageDistribution": "Raspodela po starosti",
+    "genderDistribution": "Raspodela po polu",
+    "migration": "Migracija",
+    "birthRate": "Stopa nataliteta",
+    "deathRate": "Stopa mortaliteta"
+  },
+  "airQuality": {
+    "title": "Kvalitet vazduha",
+    "subtitle": "Praćenje kvaliteta vazduha u Srbiji",
+    "airQualityIndex": "Indeks kvaliteta vazduha",
+    "pollutants": "Zagađivači",
+    "pm25": "PM2.5",
+    "pm10": "PM10",
+    "no2": "NO₂",
+    "so2": "SO₂",
+    "co": "CO",
+    "o3": "O₃",
+    "good": "Dobar",
+    "moderate": "Umeren",
+    "unhealthy": "Nezdrav",
+    "veryUnhealthy": "Veoma nezdrav",
+    "hazardous": "Opasan"
+  },
+  "energy": {
+    "title": "Energetska analiza",
+    "subtitle": "Potrošnja i proizvodnja energije",
+    "totalConsumption": "Ukupna potrošnja",
+    "renewableEnergy": "Obnovljiva energija",
+    "consumptionBySector": "Potrošnja po sektorima",
+    "productionBySource": "Proizvodnja po izvorima",
+    "efficiency": "Efikasnost",
+    "imports": "Uvoz",
+    "exports": "Izvoz"
+  },
+  "charts": {
+    "loading": "Učitavanje...",
+    "noData": "Nema dostupnih podataka",
+    "error": "Greška pri učitavanju podataka",
+    "export": "Izvezite grafikon",
+    "fullscreen": "Ceo ekran",
+    "refresh": "Osveži"
+  },
+  "filters": {
+    "dateRange": "Period",
+    "municipality": "Opština",
+    "category": "Kategorija",
+    "source": "Izvor",
+    "apply": "Primeni",
+    "reset": "Resetuj",
+    "allMunicipalities": "Sve opštine",
+    "allCategories": "Sve kategorije"
+  },
+  "table": {
+    "search": "Pretraga...",
+    "previous": "Prethodna",
+    "next": "Sledeća",
+    "showing": "Prikaz",
+    "of": "od",
+    "entries": "unosа",
+    "noResults": "Nema rezultata"
+  },
+  "common": {
+    "save": "Sačuvaj",
+    "cancel": "Otkaži",
+    "edit": "Izmeni",
+    "delete": "Obriši",
+    "view": "Pregled",
+    "download": "Preuzmi",
+    "upload": "Otpremi",
+    "close": "Zatvori",
+    "confirm": "Potvrdi",
+    "loading": "Učitavanje...",
+    "error": "Greška",
+    "success": "Uspeh",
+    "warning": "Upozorenje",
+    "info": "Informacije"
+  }
+}

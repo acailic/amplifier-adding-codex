@@ -1,0 +1,7 @@
+# Dataset Discovery Tool Dependencies
+
+# HTTP client for API requests
+requests>=2.31.0
+
+# Python 3.11+ is required for modern type hints (str | None, etc.)
+# No additional dependencies needed - uses only Python standard library

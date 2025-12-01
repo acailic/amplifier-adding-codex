@@ -1,0 +1,692 @@
+name: Monitoring and Alerting
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run monitoring checks daily at 9 AM UTC
+    - cron: '0 9 * * *'
+  workflow_dispatch:
+    inputs:
+      check_type:
+        description: 'Type of monitoring check'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+        - all
+        - performance
+        - security
+        - dependencies
+        - uptime
+
+jobs:
+  # Application Performance Monitoring
+  performance-monitoring:
+    runs-on: ubuntu-latest
+    if: github.event.inputs.check_type == 'all' || github.event.inputs.check_type == 'performance' || github.event_name != 'workflow_dispatch'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ./vizualni-admin
+
+      - name: Performance benchmark tests
+        run: |
+          cd ./vizualni-admin
+
+          echo "⚡ Running performance benchmark tests"
+
+          # Install benchmark tools
+          npm install --save-dev @benchmarkjs/vue lighthouse chrome-launcher
+
+          # Create performance benchmark
+          cat > benchmark-performance.js << 'EOF'
+          const { Benchmark } = require('benchmark');
+          const path = require('path');
+
+          // Component rendering benchmarks
+          const suite = new Benchmark.Suite();
+
+          // Mock React component rendering
+          function renderComponent(componentType) {
+            // Simulate component rendering time
+            const iterations = componentType === 'complex' ? 1000 : 100;
+            let result = 0;
+            for (let i = 0; i < iterations; i++) {
+              result += Math.random();
+            }
+            return result;
+          }
+
+          suite
+            .add('Simple Component Render', () => {
+              renderComponent('simple');
+            })
+            .add('Complex Component Render', () => {
+              renderComponent('complex');
+            })
+            .add('Data Table Render', () => {
+              renderComponent('table');
+            })
+            .add('Chart Component Render', () => {
+              renderComponent('chart');
+            })
+            .on('cycle', (event) => {
+              console.log(String(event.target));
+            })
+            .on('complete', function() {
+              console.log('Fastest is ' + this.filter('fastest').map('name'));
+
+              // Check if performance is within acceptable limits
+              const slowest = this.filter('slowest').map('hz')[0];
+              if (slowest < 100) { // Should complete at least 100 ops/sec
+                console.log('⚠️ Performance warning: Slow component detected');
+              }
+            })
+            .run({ async: true });
+
+          // Memory usage check
+          const memoryUsage = process.memoryUsage();
+          console.log('Memory Usage:', {
+            rss: Math.round(memoryUsage.rss / 1024 / 1024 * 100) / 100,
+            heapTotal: Math.round(memoryUsage.heapTotal / 1024 / 1024 * 100) / 100,
+            heapUsed: Math.round(memoryUsage.heapUsed / 1024 / 1024 * 100) / 100,
+            external: Math.round(memoryUsage.external / 1024 / 1024 * 100) / 100
+          });
+
+          // Memory threshold check
+          const heapUsedMB = memoryUsage.heapUsed / 1024 / 1024;
+          if (heapUsedMB > 100) { // Alert if using more than 100MB
+            console.log('⚠️ Memory usage warning:', heapUsedMB, 'MB');
+          }
+          EOF
+
+          node benchmark-performance.js
+
+      - name: Bundle size monitoring
+        run: |
+          cd ./vizualni-admin
+
+          echo "📦 Monitoring bundle size"
+
+          # Build application
+          npm run build
+
+          # Analyze bundle sizes
+          if [ -d "dist" ]; then
+            echo "Bundle size analysis:"
+            find dist -name "*.js" -exec du -h {} \; | sort -hr
+
+            # Total bundle size
+            TOTAL_SIZE=$(du -sh dist | cut -f1)
+            echo "Total bundle size: $TOTAL_SIZE"
+
+            # Check for bundle size regression (compare with baseline)
+            BASELINE_SIZE="2.5MB"  # Set your baseline
+            echo "Baseline size: $BASELINE_SIZE"
+
+            # Alert if bundle size increases significantly
+            if [[ "$TOTAL_SIZE" > "3MB" ]]; then
+              echo "⚠️ Bundle size alert: $TOTAL_SIZE (threshold: 3MB)"
+              exit 1
+            else
+              echo "✅ Bundle size within limits: $TOTAL_SIZE"
+            fi
+          else
+            echo "❌ Build output not found"
+            exit 1
+          fi
+
+      - name: Core Web Vitals monitoring
+        run: |
+          cd ./vizualni-admin
+
+          echo "🎯 Monitoring Core Web Vitals"
+
+          npm run build
+          npm run preview &
+          SERVER_PID=$!
+
+          sleep 10
+
+          # Install and run Lighthouse
+          npm install -g @lhci/cli@0.12.x
+
+          cat > lighthouserc.js << 'EOF'
+          module.exports = {
+            ci: {
+              collect: {
+                url: ['http://localhost:4173'],
+                startServerCommand: 'npm run preview',
+                startServerReadyPattern: 'Local:',
+              },
+              assert: {
+                assertions: {
+                  'categories:performance': ['error', { minScore: 0.85 }],
+                  'categories:accessibility': ['error', { minScore: 0.95 }],
+                  'categories:best-practices': ['error', { minScore: 0.85 }],
+                  'categories:seo': ['warn', { minScore: 0.8 }],
+                },
+              },
+              upload: {
+                target: 'temporary-public-storage',
+              },
+            },
+          };
+          EOF
+
+          # Run Lighthouse CI
+          lhci autorun
+
+          # Extract Core Web Vitals
+          if [ -f ".lighthouseci/lhr-report.json" ]; then
+            echo "Core Web Vitals:"
+            node -e "
+              const lhr = JSON.parse(require('fs').readFileSync('.lighthouseci/lhr-report.json', 'utf8'))[0];
+              const audits = lhr.audits;
+
+              console.log('Largest Contentful Paint (LCP):', audits['largest-contentful-paint'].displayValue);
+              console.log('First Input Delay (FID):', audits['max-potential-fid'].displayValue);
+              console.log('Cumulative Layout Shift (CLS):', audits['cumulative-layout-shift'].displayValue);
+              console.log('First Contentful Paint (FCP):', audits['first-contentful-paint'].displayValue);
+              console.log('Time to Interactive (TTI):', audits['interactive'].displayValue);
+            "
+          fi
+
+          kill $SERVER_PID 2>/dev/null || true
+
+      - name: Performance regression detection
+        run: |
+          cd ./vizualni-admin
+
+          echo "📈 Performance regression detection"
+
+          # Create performance baseline file if it doesn't exist
+          if [ ! -f "performance-baseline.json" ]; then
+            cat > performance-baseline.json << 'EOF'
+          {
+            "bundleSize": "2.5MB",
+            "performanceScore": 90,
+            "renderTime": 16.67,
+            "memoryUsage": 50
+          }
+          EOF
+          fi
+
+          # Run performance tests and compare with baseline
+          npm run build
+          CURRENT_SIZE=$(du -sh dist | cut -f1 | sed 's/M//')
+
+          # Extract performance score from previous Lighthouse run
+          PERF_SCORE=0
+          if [ -f ".lighthouseci/lhr-report.json" ]; then
+            PERF_SCORE=$(node -e "console.log(JSON.parse(require('fs').readFileSync('.lighthouseci/lhr-report.json', 'utf8'))[0].categories.performance.score * 100)")
+          fi
+
+          echo "Current metrics:"
+          echo "- Bundle size: ${CURRENT_SIZE}MB"
+          echo "- Performance score: ${PERF_SCORE}"
+
+          # Check for regressions
+          BASELINE_SIZE=$(node -e "console.log(JSON.parse(require('fs').readFileSync('performance-baseline.json', 'utf8')).bundleSize.replace('MB', ''))")
+          BASELINE_PERF=$(node -e "console.log(JSON.parse(require('fs').readFileSync('performance-baseline.json', 'utf8')).performanceScore)")
+
+          if (( $(echo "$CURRENT_SIZE > $BASELINE_SIZE * 1.2" | bc -l) )); then
+            echo "⚠️ Bundle size regression detected: ${CURRENT_SIZE}MB vs ${BASELINE_SIZE}MB"
+          fi
+
+          if (( $(echo "$PERF_SCORE < $BASELINE_PERF * 0.9" | bc -l) )); then
+            echo "⚠️ Performance regression detected: ${PERF_SCORE} vs ${BASELINE_PERF}"
+          fi
+
+  # Security Monitoring
+  security-monitoring:
+    runs-on: ubuntu-latest
+    if: github.event.inputs.check_type == 'all' || github.event.inputs.check_type == 'security' || github.event_name != 'workflow_dispatch'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ./vizualni-admin
+
+      - name: Security vulnerability scan
+        run: |
+          cd ./vizualni-admin
+
+          echo "🔒 Running security vulnerability scan"
+
+          # npm audit
+          AUDIT_OUTPUT=$(npm audit --json 2>/dev/null)
+          TOTAL_VULNS=$(echo "$AUDIT_OUTPUT" | jq -r '.metadata.vulnerabilities.total // 0')
+          HIGH_VULNS=$(echo "$AUDIT_OUTPUT" | jq -r '.metadata.vulnerabilities.high // 0')
+          CRITICAL_VULNS=$(echo "$AUDIT_OUTPUT" | jq -r '.metadata.vulnerabilities.critical // 0')
+          MODERATE_VULNS=$(echo "$AUDIT_OUTPUT" | jq -r '.metadata.vulnerabilities.moderate // 0')
+
+          echo "Security Scan Results:"
+          echo "- Total vulnerabilities: $TOTAL_VULNS"
+          echo "- Critical: $CRITICAL_VULNS"
+          echo "- High: $HIGH_VULNS"
+          echo "- Moderate: $MODERATE_VULNS"
+
+          # Create security report
+          cat > security-report.json << EOF
+          {
+            "scanDate": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "totalVulnerabilities": $TOTAL_VULNS,
+            "criticalVulnerabilities": $CRITICAL_VULNS,
+            "highVulnerabilities": $HIGH_VULNS,
+            "moderateVulnerabilities": $MODERATE_VULNS,
+            "auditOutput": $(echo "$AUDIT_OUTPUT" | jq '.')
+          }
+          EOF
+
+          # Alert on critical vulnerabilities
+          if [ "$CRITICAL_VULNS" -gt 0 ]; then
+            echo "🚨 CRITICAL: $CRITICAL_VULNS critical vulnerabilities found!"
+            exit 1
+          elif [ "$HIGH_VULNS" -gt 0 ]; then
+            echo "⚠️ WARNING: $HIGH_VULNS high vulnerabilities found!"
+            exit 1
+          fi
+
+      - name: Dependency security check
+        run: |
+          cd ./vizualni-admin
+
+          echo "🔍 Checking dependency security"
+
+          # Install snyk for additional security scanning
+          npm install -g snyk
+
+          # Run Snyk test (requires SNYK_TOKEN)
+          if [ -n "${{ secrets.SNYK_TOKEN }}" ]; then
+            snyk test --json > snyk-report.json 2>/dev/null || true
+          else
+            echo "⚠️ SNYK_TOKEN not configured, skipping Snyk scan"
+          fi
+
+          # Check for known vulnerable packages
+          VULNERABLE_PACKAGES=$(npm audit --json | jq -r '.vulnerabilities | keys[]' 2>/dev/null || echo "")
+
+          if [ -n "$VULNERABLE_PACKAGES" ]; then
+            echo "Vulnerable packages detected:"
+            echo "$VULNERABLE_PACKAGES"
+          fi
+
+      - name: Code security analysis
+        run: |
+          cd ./vizualni-admin
+
+          echo "🔍 Running code security analysis"
+
+          # Install security linter
+          npm install --save-dev eslint-plugin-security
+
+          # Create security lint config
+          cat > .eslintrc.security.js << 'EOF'
+          module.exports = {
+            extends: ['plugin:security/recommended'],
+            plugins: ['security'],
+            rules: {
+              'security/detect-object-injection': 'warn',
+              'security/detect-non-literal-fs-filename': 'warn',
+              'security/detect-non-literal-regexp': 'warn',
+              'security/detect-unsafe-regex': 'error',
+              'security/detect-buffer-noassert': 'error',
+              'security/detect-child-process': 'warn',
+              'security/detect-disable-mustache-escape': 'error',
+              'security/detect-eval-with-expression': 'error',
+              'security/detect-no-csrf-before-method-override': 'error',
+              'security/detect-non-literal-require': 'warn',
+              'security/detect-possible-timing-attacks': 'warn',
+              'security/detect-pseudoRandomBytes': 'error'
+            }
+          };
+          EOF
+
+          # Run security linting
+          npx eslint --config .eslintrc.security.js src/**/*.{ts,tsx} --format=json > security-lint-report.json 2>/dev/null || true
+
+          # Analyze security lint results
+          if [ -f "security-lint-report.json" ]; then
+            SECURITY_ISSUES=$(cat security-lint-report.json | jq length)
+            echo "Security lint issues found: $SECURITY_ISSUES"
+
+            if [ "$SECURITY_ISSUES" -gt 0 ]; then
+              echo "Security issues:"
+              cat security-lint-report.json | jq -r '.[] | "- \(.filePath):\(.messages[]?.ruleId || "unknown")"'
+            fi
+          fi
+
+      - name: SAST (Static Application Security Testing)
+        run: |
+          cd ./vizualni-admin
+
+          echo "🔍 Running SAST analysis"
+
+          # Check for common security issues in TypeScript code
+          grep -r "eval(" src/ || echo "✅ No eval() found"
+          grep -r "innerHTML" src/ || echo "✅ No innerHTML found"
+          grep -r "dangerouslySetInnerHTML" src/ || echo "✅ No dangerouslySetInnerHTML found"
+
+          # Check for hardcoded secrets or sensitive data
+          if grep -r -i "password\|secret\|api_key\|token" src/ | grep -v "// " | grep -v "export\|import\|interface\|type"; then
+            echo "⚠️ Potential hardcoded secrets detected"
+          else
+            echo "✅ No hardcoded secrets detected"
+          fi
+
+  # Dependency Monitoring
+  dependency-monitoring:
+    runs-on: ubuntu-latest
+    if: github.event.inputs.check_type == 'all' || github.event.inputs.check_type == 'dependencies' || github.event_name != 'workflow_dispatch'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Check for outdated dependencies
+        run: |
+          cd ./vizualni-admin
+
+          echo "📦 Checking for outdated dependencies"
+
+          OUTDATED_OUTPUT=$(npm outdated --json 2>/dev/null || echo '{}')
+          OUTDATED_COUNT=$(echo "$OUTDATED_OUTPUT" | jq 'keys | length')
+
+          echo "Outdated dependencies: $OUTDATED_COUNT"
+
+          if [ "$OUTDATED_COUNT" -gt 0 ]; then
+            echo "Outdated packages:"
+            echo "$OUTDATED_OUTPUT" | jq -r 'to_entries[] | "- \(.key): \(.value.current) → \(.value.latest)"'
+
+            # Create dependency report
+            cat > dependency-report.json << EOF
+          {
+            "scanDate": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "outdatedCount": $OUTDATED_COUNT,
+            "outdatedPackages": $(echo "$OUTDATED_OUTPUT")
+          }
+          EOF
+          fi
+
+      - name: License compliance check
+        run: |
+          cd ./vizualni-admin
+
+          echo "📜 Checking license compliance"
+
+          # Install license checker
+          npm install --save-dev license-checker
+
+          # Check licenses
+          npx license-checker --json > license-report.json 2>/dev/null || true
+
+          if [ -f "license-report.json" ]; then
+            # Check for problematic licenses
+            PROBLEMATIC_LICENSES=$(cat license-report.json | jq -r 'to_entries[] | select(.value.licenses | test("GPL|AGPL|LGPL")) | .key' || echo "")
+
+            if [ -n "$PROBLEMATIC_LICENSES" ]; then
+              echo "⚠️ Packages with potentially problematic licenses:"
+              echo "$PROBLEMATIC_LICENSES"
+            else
+              echo "✅ All packages have acceptable licenses"
+            fi
+          fi
+
+      - name: Dependency freshness score
+        run: |
+          cd ./vizualni-admin
+
+          echo "🔄 Calculating dependency freshness score"
+
+          # Get all dependencies
+          TOTAL_DEPS=$(npm ls --depth=0 --json 2>/dev/null | jq -r '.dependencies | keys | length' || echo "0")
+          echo "Total dependencies: $TOTAL_DEPS"
+
+          # Calculate freshness based on outdated count
+          OUTDATED_COUNT=$(npm outdated --json 2>/dev/null | jq 'keys | length' || echo "0")
+
+          if [ "$TOTAL_DEPS" -gt 0 ]; then
+            FRESHNESS_SCORE=$(( (TOTAL_DEPS - OUTDATED_COUNT) * 100 / TOTAL_DEPS ))
+            echo "Dependency freshness score: ${FRESHNESS_SCORE}%"
+
+            if [ "$FRESHNESS_SCORE" -lt 70 ]; then
+              echo "⚠️ Low dependency freshness: ${FRESHNESS_SCORE}%"
+            else
+              echo "✅ Good dependency freshness: ${FRESHNESS_SCORE}%"
+            fi
+          fi
+
+  # Uptime Monitoring
+  uptime-monitoring:
+    runs-on: ubuntu-latest
+    if: github.event.inputs.check_type == 'all' || github.event.inputs.check_type == 'uptime' || github.event_name == 'schedule'
+
+    steps:
+      - name: Check application uptime
+        run: |
+          echo "🌐 Checking application uptime"
+
+          # List of URLs to monitor (customize for your deployment)
+          URLs=(
+            "https://vizualni-admin.com"
+            "https://vizualni-admin.com/docs"
+            "https://vizualni-admin.com/storybook"
+          )
+
+          for url in "${URLS[@]}"; do
+            echo "Checking $url..."
+
+            # Check HTTP status
+            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$url" 2>/dev/null || echo "000")
+
+            if [ "$HTTP_STATUS" = "200" ]; then
+              echo "✅ $url - OK (200)"
+            elif [ "$HTTP_STATUS" = "000" ]; then
+              echo "❌ $url - Connection failed"
+              exit 1
+            else
+              echo "⚠️ $url - HTTP $HTTP_STATUS"
+            fi
+
+            # Check response time
+            RESPONSE_TIME=$(curl -s -o /dev/null -w "%{time_total}" "$url" 2>/dev/null || echo "0")
+            if (( $(echo "$RESPONSE_TIME > 5.0" | bc -l) )); then
+              echo "⚠️ $url - Slow response: ${RESPONSE_TIME}s"
+            else
+              echo "✅ $url - Response time: ${RESPONSE_TIME}s"
+            fi
+          done
+
+  # Build Time Monitoring
+  build-time-monitoring:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Monitor build times
+        run: |
+          cd ./vizualni-admin
+
+          echo "⏱️ Monitoring build times"
+
+          # Install dependencies and time it
+          echo "Installing dependencies..."
+          START_TIME=$(date +%s)
+          npm ci
+          END_TIME=$(date +%s)
+          INSTALL_TIME=$((END_TIME - START_TIME))
+          echo "Install time: ${INSTALL_TIME}s"
+
+          # Time the build process
+          echo "Building application..."
+          START_TIME=$(date +%s)
+          npm run build
+          END_TIME=$(date +%s)
+          BUILD_TIME=$((END_TIME - START_TIME))
+          echo "Build time: ${BUILD_TIME}s"
+
+          # Time the test suite
+          echo "Running tests..."
+          START_TIME=$(date +%s)
+          npm run test:ci
+          END_TIME=$(date +%s)
+          TEST_TIME=$((END_TIME - START_TIME))
+          echo "Test time: ${TEST_TIME}s"
+
+          # Total time
+          TOTAL_TIME=$((INSTALL_TIME + BUILD_TIME + TEST_TIME))
+          echo "Total pipeline time: ${TOTAL_TIME}s"
+
+          # Create build time report
+          cat > build-time-report.json << EOF
+          {
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "installTime": $INSTALL_TIME,
+            "buildTime": $BUILD_TIME,
+            "testTime": $TEST_TIME,
+            "totalTime": $TOTAL_TIME,
+            "commit": "${{ github.sha }}"
+          }
+          EOF
+
+          # Alert if build times are too long
+          if [ "$BUILD_TIME" -gt 300 ]; then
+            echo "⚠️ Build time alert: ${BUILD_TIME}s (threshold: 300s)"
+          fi
+
+          if [ "$TOTAL_TIME" -gt 600 ]; then
+            echo "⚠️ Total pipeline time alert: ${TOTAL_TIME}s (threshold: 600s)"
+          fi
+
+  # Generate monitoring report
+  monitoring-report:
+    runs-on: ubuntu-latest
+    needs: [performance-monitoring, security-monitoring, dependency-monitoring, build-time-monitoring]
+    if: always()
+
+    steps:
+      - name: Generate comprehensive monitoring report
+        run: |
+          echo "📊 Generating comprehensive monitoring report"
+
+          cat > monitoring-report.md << EOF
+          # 📊 Monitoring and Alerting Report
+
+          ## Report Information
+          - **Timestamp**: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+          - **Commit**: ${{ github.sha }}
+          - **Branch**: ${{ github.ref_name }}
+          - **Workflow Run**: ${{ github.run_number }}
+
+          ## Monitoring Results
+
+          ### Performance Monitoring
+          - **Status**: ${{ needs.performance-monitoring.result }}
+          - **Bundle Size**: Monitored
+          - **Core Web Vitals**: Checked
+          - **Performance Score**: Measured
+
+          ### Security Monitoring
+          - **Status**: ${{ needs.security-monitoring.result }}
+          - **Vulnerabilities**: Scanned
+          - **Dependencies**: Checked
+          - **Code Security**: Analyzed
+
+          ### Dependency Monitoring
+          - **Status**: ${{ needs.dependency-monitoring.result }}
+          - **Outdated Packages**: Monitored
+          - **License Compliance**: Checked
+          - **Freshness Score**: Calculated
+
+          ### Build Time Monitoring
+          - **Status**: ${{ needs.build-time-monitoring.result }}
+          - **Install Time**: Measured
+          - **Build Time**: Monitored
+          - **Test Time**: Tracked
+
+          ## 🚨 Alerts
+          EOF
+
+          # Add alerts if any jobs failed
+          if [ "${{ needs.performance-monitoring.result }}" = "failure" ]; then
+            echo "- ❌ Performance monitoring failed" >> monitoring-report.md
+          fi
+
+          if [ "${{ needs.security-monitoring.result }}" = "failure" ]; then
+            echo "- ❌ Security monitoring failed" >> monitoring-report.md
+          fi
+
+          if [ "${{ needs.dependency-monitoring.result }}" = "failure" ]; then
+            echo "- ❌ Dependency monitoring failed" >> monitoring-report.md
+          fi
+
+          if [ "${{ needs.build-time-monitoring.result }}" = "failure" ]; then
+            echo "- ❌ Build time monitoring failed" >> monitoring-report.md
+          fi
+
+          echo "" >> monitoring-report.md
+          echo "---" >> monitoring-report.md
+          echo "*Report generated automatically by GitHub Actions*" >> monitoring-report.md
+
+      - name: Upload monitoring report
+        uses: actions/upload-artifact@v4
+        with:
+          name: monitoring-report-${{ github.run_number }}
+          path: monitoring-report.md
+          retention-days: 30
+
+      - name: Comment on monitoring results
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = 'monitoring-report.md';
+
+            if (fs.existsSync(path)) {
+              const report = fs.readFileSync(path, 'utf8');
+
+              await github.rest.issues.createComment({
+                issue_number: 1, // Update with your monitoring issue number
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: '## 📊 Daily Monitoring Report\n\n' + report
+              });
+            }

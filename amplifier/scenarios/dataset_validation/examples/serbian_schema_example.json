@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Serbian Government Dataset Schema",
+  "description": "Schema validation for Serbian open government data",
+  "type": "object",
+  "properties": {
+    "required": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Required columns in the dataset"
+    },
+    "numeric": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Columns that must contain numeric values"
+    },
+    "categorical": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Columns that must contain categorical values"
+    },
+    "serbian_validators": {
+      "type": "object",
+      "description": "Serbian-specific field validations",
+      "properties": {
+        "jmbg": {
+          "type": "string",
+          "enum": ["jmbg_validation"],
+          "description": "Validate JMBG (Unique Master Citizen Number)"
+        },
+        "pib": {
+          "type": "string",
+          "enum": ["pib_validation"],
+          "description": "Validate PIB (Tax Identification Number)"
+        },
+        "maticni_broj": {
+          "type": "string",
+          "enum": ["maticni_broj_validation"],
+          "description": "Validate Matični broj (Unique Master Citizen Number)"
+        },
+        "opstina": {
+          "type": "string",
+          "enum": ["municipality_validation"],
+          "description": "Validate Serbian municipality name"
+        },
+        "grad": {
+          "type": "string",
+          "enum": ["city_validation"],
+          "description": "Validate Serbian city name"
+        },
+        "postanski_broj": {
+          "type": "string",
+          "enum": ["postal_code_validation"],
+          "description": "Validate Serbian postal code (5 digits)"
+        },
+        "telefon": {
+          "type": "string",
+          "enum": ["phone_validation"],
+          "description": "Validate Serbian phone number format"
+        },
+        "email": {
+          "type": "string",
+          "enum": ["email_validation"],
+          "description": "Validate email format"
+        }
+      }
+    },
+    "enum_constraints": {
+      "type": "object",
+      "description": "Enumerated value constraints for categorical fields",
+      "properties": {
+        "pol": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Valid gender values"
+        },
+        "status": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Valid status values"
+        },
+        "tip_prijema": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Valid admission types"
+        },
+        "nivo_obrazovanja": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Valid education levels"
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "description": "Demographic data schema",
+      "required": ["jmbg", "ime", "prezime", "pol", "datum_rodjenja", "opstina"],
+      "numeric": ["godine", "prihod"],
+      "categorical": ["pol", "opstina", "status"],
+      "serbian_validators": {
+        "jmbg": "jmbg_validation",
+        "opstina": "municipality_validation"
+      }
+    },
+    {
+      "description": "Economic data schema",
+      "required": ["pib", "naziv_firme", "opstina", "bruto_zarada"],
+      "numeric": ["bruto_zarada", "prihod", "rashod", "broj_zaposlenih"],
+      "categorical": ["opstina", "delatnost"],
+      "serbian_validators": {
+        "pib": "pib_validation",
+        "opstina": "municipality_validation"
+      }
+    },
+    {
+      "description": "Budget data schema",
+      "required": ["godina", "opstina", "prihodi", "rashodi"],
+      "numeric": ["prihodi", "rashodi", "saldo"],
+      "categorical": ["opstina", "tip_prihoda", "tip_rashoda"],
+      "serbian_validators": {
+        "opstina": "municipality_validation"
+      }
+    }
+  ]
+}
