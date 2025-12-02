@@ -8,6 +8,15 @@ const nextConfig = {
   images: {
     domains: ['localhost'],
   },
+  webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
+    // Add webpack alias for @/graphql
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@/graphql': require('path').resolve(__dirname, 'graphql'),
+    };
+
+    return config;
+  },
 }
 
 module.exports = nextConfig
