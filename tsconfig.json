@@ -25,17 +25,14 @@
       "@/lib/*": ["./lib/*"],
       "@/pages/*": ["./pages/*"],
       "@/public/*": ["./public/*"],
-      "@/styles/*": ["./styles/*"]
+      "@/styles/*": ["./styles/*"],
+      "@/graphql/*": ["./graphql/*"]
     }
   },
   "include": [
-    "next-env.d.ts", 
-    "pages/**/*.ts", 
-    "pages/**/*.tsx", 
-    "components/**/*.ts", 
-    "components/**/*.tsx",
-    "lib/**/*.ts",
-    "lib/**/*.tsx",
+    "next-env.d.ts",
+    "app/**/*.ts",
+    "app/**/*.tsx",
     ".next/types/**/*.ts"
   ],
   "exclude": [
