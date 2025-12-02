@@ -10,32 +10,38 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "next": "14.0.4",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "typescript": "^5.3.3",
+    "@headlessui/react": "^1.7.17",
+    "@tailwindcss/forms": "^0.5.7",
     "@types/node": "^20.10.5",
     "@types/react": "^18.2.45",
     "@types/react-dom": "^18.2.18",
-    "tailwindcss": "^3.4.0",
     "autoprefixer": "^10.4.16",
-    "postcss": "^8.4.32",
-    "@tailwindcss/forms": "^0.5.7",
-    "recharts": "^2.8.0",
-    "lucide-react": "^0.303.0",
-    "@headlessui/react": "^1.7.17",
-    "next-i18next": "^15.2.0",
     "axios": "^1.6.2",
     "clsx": "^2.0.0",
-    "date-fns": "^3.0.6"
+    "date-fns": "^3.0.6",
+    "lucide-react": "^0.303.0",
+    "next": "14.0.4",
+    "next-i18next": "^15.2.0",
+    "postcss": "^8.4.32",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "recharts": "^2.8.0",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5.3.3"
   },
   "devDependencies": {
-    "eslint": "^8.56.0",
-    "eslint-config-next": "14.0.4",
     "@typescript-eslint/eslint-plugin": "^6.15.0",
-    "@typescript-eslint/parser": "^6.15.0"
+    "@typescript-eslint/parser": "^6.15.0",
+    "compression-webpack-plugin": "^11.1.0",
+    "eslint": "^8.56.0",
+    "eslint-config-next": "14.0.4"
   },
-  "keywords": ["serbia", "visualization", "dashboard", "admin"],
+  "keywords": [
+    "serbia",
+    "visualization",
+    "dashboard",
+    "admin"
+  ],
   "author": "",
   "license": "MIT",
   "description": "Serbian data visualization admin dashboard"
