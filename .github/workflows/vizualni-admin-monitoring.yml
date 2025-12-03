@@ -1,0 +1,517 @@
+name: Vizualni Admin Monitoring & Observability
+
+on:
+  schedule:
+    # Run health checks every 15 minutes
+    - cron: '*/15 * * * *'
+    # Performance monitoring every hour
+    - cron: '0 * * * *'
+    # Security scanning daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      check_type:
+        description: 'Type of monitoring check'
+        required: true
+        default: 'health'
+        type: choice
+        options:
+        - health
+        - performance
+        - security
+        - accessibility
+        - all
+
+env:
+  PROD_URL: 'https://vizualni-admin.vercel.app'
+  STAGING_URL: 'https://vizualni-admin-staging.vercel.app'
+  WORKING_DIRECTORY: './amplifier/scenarios/dataset_discovery/vizualni-admin'
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '*/15 * * * *' || github.event.inputs.check_type == 'health' || github.event.inputs.check_type == 'all'
+
+    steps:
+      - name: Health Check Production
+        id: health-prod
+        run: |
+          echo "🏥 Checking production health..."
+
+          # Check main health endpoint
+          HEALTH_RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}\nTIME_TOTAL:%{time_total}" \
+            -H "User-Agent: Vizualni-Health-Monitor/1.0" \
+            "${{ env.PROD_URL }}/api/health" || echo "HTTP_CODE:000")
+
+          HTTP_CODE=$(echo "$HEALTH_RESPONSE" | grep "HTTP_CODE:" | cut -d: -f2)
+          TIME_TOTAL=$(echo "$HEALTH_RESPONSE" | grep "TIME_TOTAL:" | cut -d: -f2)
+
+          echo "http-code=$HTTP_CODE" >> $GITHUB_OUTPUT
+          echo "response-time=$TIME_TOTAL" >> $GITHUB_OUTPUT
+
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "✅ Production health check passed (${TIME_TOTAL}s)"
+          else
+            echo "❌ Production health check failed (HTTP $HTTP_CODE)"
+            echo "error=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Health Check Staging
+        id: health-staging
+        run: |
+          echo "🏥 Checking staging health..."
+
+          HEALTH_RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}\nTIME_TOTAL:%{time_total}" \
+            -H "User-Agent: Vizualni-Health-Monitor/1.0" \
+            "${{ env.STAGING_URL }}/api/health" || echo "HTTP_CODE:000")
+
+          HTTP_CODE=$(echo "$HEALTH_RESPONSE" | grep "HTTP_CODE:" | cut -d: -f2)
+          TIME_TOTAL=$(echo "$HEALTH_RESPONSE" | grep "TIME_TOTAL:" | cut -d: -f2)
+
+          echo "http-code=$HTTP_CODE" >> $GITHUB_OUTPUT
+          echo "response-time=$TIME_TOTAL" >> $GITHUB_OUTPUT
+
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "✅ Staging health check passed (${TIME_TOTAL}s)"
+          else
+            echo "❌ Staging health check failed (HTTP $HTTP_CODE)"
+            echo "error=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Database Health Check
+        run: |
+          echo "🗄️ Checking database connectivity..."
+
+          # Check database health if endpoint exists
+          DB_HEALTH_RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" \
+            "${{ env.PROD_URL }}/api/health/database" 2>/dev/null || echo "HTTP_CODE:000")
+
+          DB_HTTP_CODE=$(echo "$DB_HEALTH_RESPONSE" | grep "HTTP_CODE:" | cut -d: -f2)
+
+          if [ "$DB_HTTP_CODE" = "200" ]; then
+            echo "✅ Database health check passed"
+          else
+            echo "⚠️ Database health check not available or failed (HTTP $DB_HTTP_CODE)"
+          fi
+
+      - name: External API Health Check
+        run: |
+          echo "🌐 Checking external API connectivity..."
+
+          # Check external services health if endpoints exist
+          APIS=(
+            "serbian-data-api"
+            "geo-location-api"
+            "statistics-api"
+          )
+
+          for api in "${APIS[@]}"; do
+            API_RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" \
+              "${{ env.PROD_URL }}/api/health/${api}" 2>/dev/null || echo "HTTP_CODE:000")
+            API_HTTP_CODE=$(echo "$API_RESPONSE" | grep "HTTP_CODE:" | cut -d: -f2)
+
+            if [ "$API_HTTP_CODE" = "200" ]; then
+              echo "✅ ${api} health check passed"
+            else
+              echo "⚠️ ${api} health check failed (HTTP $API_HTTP_CODE)"
+            fi
+          done
+
+      - name: Send Health Alert
+        if: failure() || steps.health-prod.outputs.error == 'true' || steps.health-staging.outputs.error == 'true'
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          channel: '#alerts'
+          text: |
+            🚨 Vizualni Admin Health Check Failed!
+            Production: ${{ steps.health-prod.outputs.http-code }} (${{ steps.health-prod.outputs.response-time }}s)
+            Staging: ${{ steps.health-staging.outputs.http-code }} (${{ steps.health-staging.outputs.response-time }}s)
+            Time: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  performance-monitoring:
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 * * * *' || github.event.inputs.check_type == 'performance' || github.event.inputs.check_type == 'all'
+
+    steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+
+      - name: Install Lighthouse CI
+        run: npm install -g @lhci/cli@0.12.x
+
+      - name: Performance Audit Production
+        run: |
+          echo "⚡ Running production performance audit..."
+
+          cat > lighthouserc-monitoring.js << 'EOF'
+          module.exports = {
+            ci: {
+              collect: {
+                url: ['${{ env.PROD_URL }}'],
+                numberOfRuns: 3,
+                settings: {
+                  chromeFlags: '--no-sandbox --headless',
+                },
+              },
+              assert: {
+                assertions: {
+                  'categories:performance': ['warn', { minScore: 0.85 }],
+                  'categories:accessibility': ['warn', { minScore: 0.90 }],
+                  'categories:best-practices': ['warn', { minScore: 0.85 }],
+                  'categories:seo': ['warn', { minScore: 0.85 }],
+                  'categories:pwa': 'off',
+                },
+              },
+              upload: {
+                target: 'temporary-public-storage',
+              },
+            },
+          };
+          EOF
+
+          lhci autorun --config=lighthouserc-monitoring.js
+
+      - name: Extract Performance Metrics
+        id: performance
+        run: |
+          if [ -f ".lighthouseci/lhr-report.json" ]; then
+            # Extract key metrics
+            PERF_SCORE=$(node -e "console.log(Math.round(JSON.parse(require('fs').readFileSync('.lighthouseci/lhr-report.json', 'utf8'))[0].categories.performance.score * 100))")
+            FCP=$(node -e "console.log(Math.round(JSON.parse(require('fs').readFileSync('.lighthouseci/lhr-report.json', 'utf8'))[0].audits['first-contentful-paint'].numericValue / 1000 * 100) / 100)")
+            LCP=$(node -e "console.log(Math.round(JSON.parse(require('fs').readFileSync('.lighthouseci/lhr-report.json', 'utf8'))[0].audits['largest-contentful-paint'].numericValue / 1000 * 100) / 100)")
+            CLS=$(node -e "console.log(JSON.parse(require('fs').readFileSync('.lighthouseci/lhr-report.json', 'utf8'))[0].audits['cumulative-layout-shift'].numericValue.toFixed(3))")
+            FID=$(node -e "console.log(JSON.parse(require('fs').readFileSync('.lighthouseci/lhr-report.json', 'utf8'))[0].audits['max-potential-fid'] ? JSON.parse(require('fs').readFileSync('.lighthouseci/lhr-report.json', 'utf8'))[0].audits['max-potential-fid'].numericValue : 0)")
+
+            echo "performance-score=$PERF_SCORE" >> $GITHUB_OUTPUT
+            echo "first-contentful-paint=$FCP" >> $GITHUB_OUTPUT
+            echo "largest-contentful-paint=$LCP" >> $GITHUB_OUTPUT
+            echo "cumulative-layout-shift=$CLS" >> $GITHUB_OUTPUT
+            echo "first-input-delay=$FID" >> $GITHUB_OUTPUT
+
+            echo "Performance Metrics:"
+            echo "Overall Score: $PERF_SCORE"
+            echo "First Contentful Paint: ${FCP}s"
+            echo "Largest Contentful Paint: ${LCP}s"
+            echo "Cumulative Layout Shift: $CLS"
+            echo "First Input Delay: ${FID}ms"
+
+            # Check for performance regressions
+            if [ "$PERF_SCORE" -lt 85 ]; then
+              echo "⚠️ Performance score below threshold (85)"
+              echo "regression=true" >> $GITHUB_OUTPUT
+            fi
+
+            if (( $(echo "$LCP > 4.0" | bc -l) )); then
+              echo "⚠️ LCP above 4.0s threshold"
+              echo "lcp-regression=true" >> $GITHUB_OUTPUT
+            fi
+
+            if (( $(echo "$CLS > 0.25" | bc -l) )); then
+              echo "⚠️ CLS above 0.25 threshold"
+              echo "cls-regression=true" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Store Performance Data
+        run: |
+          echo "📊 Storing performance metrics..."
+
+          # Create performance data file
+          cat > performance-metrics.json << EOF
+          {
+            "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+            "metrics": {
+              "performance_score": ${{ steps.performance.outputs.performance-score || 0 }},
+              "first_contentful_paint": ${{ steps.performance.outputs.first-contentful-paint || 0 }},
+              "largest_contentful_paint": ${{ steps.performance.outputs.largest-contentful-paint || 0 }},
+              "cumulative_layout_shift": ${{ steps.performance.outputs.cumulative-layout-shift || 0 }},
+              "first_input_delay": ${{ steps.performance.outputs.first-input-delay || 0 }}
+            }
+          }
+          EOF
+
+          # Upload as artifact for historical tracking
+          echo "Performance metrics saved to performance-metrics.json"
+
+      - name: Performance Regression Alert
+        if: steps.performance.outputs.regression == 'true' || steps.performance.outputs.lcp-regression == 'true' || steps.performance.outputs.cls-regression == 'true'
+        uses: 8398a7/action-slack@v3
+        with:
+          status: warning
+          channel: '#performance'
+          text: |
+            ⚠️ Vizualni Admin Performance Regression Detected!
+            Score: ${{ steps.performance.outputs.performance-score }}/100
+            LCP: ${{ steps.performance.outputs.largest-contentful-paint }}s (target < 4.0s)
+            CLS: ${{ steps.performance.outputs.cumulative-layout-shift }} (target < 0.25)
+            Check report: ${{ env.PROD_URL }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Upload Performance Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-report-$(date +%Y%m%d-%H%M%S)
+          path: |
+            .lighthouseci/
+            performance-metrics.json
+          retention-days: 30
+
+  security-monitoring:
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 2 * * *' || github.event.inputs.check_type == 'security' || github.event.inputs.check_type == 'all'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+          cache-dependency-path: ${{ env.WORKING_DIRECTORY }}/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+
+      - name: Security Vulnerability Scan
+        id: security
+        run: |
+          echo "🔒 Running security vulnerability scan..."
+
+          cd ${{ env.WORKING_DIRECTORY }}
+
+          # npm audit
+          AUDIT_OUTPUT=$(npm audit --json)
+          VULNS=$(echo "$AUDIT_OUTPUT" | jq -r '.metadata.vulnerabilities.total // 0')
+          HIGH_VULNS=$(echo "$AUDIT_OUTPUT" | jq -r '.metadata.vulnerabilities.high // 0')
+          CRITICAL_VULNS=$(echo "$AUDIT_OUTPUT" | jq -r '.metadata.vulnerabilities.critical // 0')
+          MODERATE_VULNS=$(echo "$AUDIT_OUTPUT" | jq -r '.metadata.vulnerabilities.moderate // 0')
+
+          echo "total-vulnerabilities=$VULNS" >> $GITHUB_OUTPUT
+          echo "high-vulnerabilities=$HIGH_VULNS" >> $GITHUB_OUTPUT
+          echo "critical-vulnerabilities=$CRITICAL_VULNS" >> $GITHUB_OUTPUT
+          echo "moderate-vulnerabilities=$MODERATE_VULNS" >> $GITHUB_OUTPUT
+
+          echo "Security Audit Results:"
+          echo "Total vulnerabilities: $VULNS"
+          echo "High: $HIGH_VULNS"
+          echo "Critical: $CRITICAL_VULNS"
+          echo "Moderate: $MODERATE_VULNS"
+
+          if [ "$HIGH_VULNS" -gt 0 ] || [ "$CRITICAL_VULNS" -gt 0 ]; then
+            echo "security-critical=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: SAST Scan with CodeQL
+        uses: github/codeql-action/analyze@v3
+        with:
+          languages: javascript
+          path: ${{ env.WORKING_DIRECTORY }}
+
+      - name: Dependency Security Scan
+        uses: snyk/actions/node@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYP_TOKEN }}
+        with:
+          args: --severity-threshold=high
+        run: |
+          cd ${{ env.WORKING_DIRECTORY }}
+          snyk test --severity-threshold=high || echo "Snyk scan completed with findings"
+
+      - name: Web Security Headers Check
+        id: headers
+        run: |
+          echo "🔍 Checking security headers..."
+
+          # Check security headers on production
+          HEADERS=$(curl -s -I "${{ env.PROD_URL }}")
+
+          # Check for critical security headers
+          REQUIRED_HEADERS=(
+            "x-content-type-options"
+            "x-frame-options"
+            "x-xss-protection"
+            "strict-transport-security"
+            "referrer-policy"
+          )
+
+          MISSING_HEADERS=()
+          for header in "${REQUIRED_HEADERS[@]}"; do
+            if ! echo "$HEADERS" | grep -i "$header:" > /dev/null; then
+              MISSING_HEADERS+=("$header")
+            fi
+          done
+
+          if [ ${#MISSING_HEADERS[@]} -gt 0 ]; then
+            echo "⚠️ Missing security headers: ${MISSING_HEADERS[*]}"
+            echo "missing-headers=${MISSING_HEADERS[*]}" >> $GITHUB_OUTPUT
+          else
+            echo "✅ All required security headers present"
+          fi
+
+      - name: SSL Certificate Check
+        run: |
+          echo "🔐 Checking SSL certificate..."
+
+          # Check SSL certificate expiration
+          SSL_INFO=$(echo | openssl s_client -servername vizualni-admin.vercel.app -connect vizualni-admin.vercel.app:443 2>/dev/null | openssl x509 -noout -dates)
+
+          EXPIRY_DATE=$(echo "$SSL_INFO" | grep "notAfter" | cut -d= -f2)
+          EXPIRY_EPOCH=$(date -d "$EXPIRY_DATE" +%s)
+          CURRENT_EPOCH=$(date +%s)
+          DAYS_UNTIL_EXPIRY=$(( (EXPIRY_EPOCH - CURRENT_EPOCH) / 86400 ))
+
+          echo "SSL certificate expires: $EXPIRY_DATE ($DAYS_UNTIL_EXPIRY days)"
+
+          if [ "$DAYS_UNTIL_EXPIRY" -lt 30 ]; then
+            echo "⚠️ SSL certificate expires in less than 30 days!"
+            echo "ssl-warning=true" >> $GITHUB_OUTPUT
+          else
+            echo "✅ SSL certificate is valid"
+          fi
+
+      -name: Security Alert
+        if: steps.security.outputs.security-critical == 'true' || steps.headers.outputs.missing-headers != '' || steps.headers.outputs.ssl-warning == 'true'
+        uses: 8398a7/action-slack@v3
+        with:
+          status: warning
+          channel: '#security'
+          text: |
+            🚨 Vizualni Admin Security Issues Detected!
+            Vulnerabilities: ${{ steps.security.outputs.high-vulnerabilities }} high, ${{ steps.security.outputs.critical-vulnerabilities }} critical
+            Missing Headers: ${{ steps.headers.outputs.missing-headers }}
+            SSL Status: ${{ steps.headers.outputs.ssl-warning }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  accessibility-monitoring:
+    runs-on: ubuntu-latest
+    if: github.event.inputs.check_type == 'accessibility' || github.event.inputs.check_type == 'all'
+
+    steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+
+      - name: Install Accessibility Tools
+        run: |
+          npm install -g @axe-core/cli @axe-core/playwright playwright
+
+      - name: Accessibility Audit Production
+        id: accessibility
+        run: |
+          echo "♿ Running production accessibility audit..."
+
+          # Create accessibility test
+          cat > accessibility-check.js << 'EOF'
+          const { chromium } = require('playwright');
+          const { AxeBuilder } = require('@axe-core/playwright');
+
+          async function runAccessibilityAudit() {
+            const browser = await chromium.launch({ headless: true });
+            const page = await browser.newPage();
+
+            try {
+              await page.goto('${{ env.PROD_URL }}', { waitUntil: 'networkidle' });
+
+              const results = await new AxeBuilder({ page })
+                .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
+                .analyze();
+
+              const violations = results.violations;
+              const totalViolations = violations.length;
+
+              // Count by impact
+              const critical = violations.filter(v => v.impact === 'critical').length;
+              const serious = violations.filter(v => v.impact === 'serious').length;
+              const moderate = violations.filter(v => v.impact === 'moderate').length;
+              const minor = violations.filter(v => v.impact === 'minor').length;
+
+              console.log(`Total violations: ${totalViolations}`);
+              console.log(`Critical: ${critical}, Serious: ${serious}, Moderate: ${moderate}, Minor: ${minor}`);
+
+              // Return results for GitHub Actions
+              console.log(`::set-output name=total-violations::${totalViolations}`);
+              console.log(`::set-output name=critical-violations::${critical}`);
+              console.log(`::set-output name=serious-violations::${serious}`);
+
+              // Fail if too many critical or serious violations
+              if (critical > 0 || serious > 5) {
+                console.log('❌ Too many accessibility violations');
+                process.exit(1);
+              } else {
+                console.log('✅ Accessibility audit passed');
+              }
+
+            } catch (error) {
+              console.error('Accessibility audit failed:', error);
+              process.exit(1);
+            } finally {
+              await browser.close();
+            }
+          }
+
+          runAccessibilityAudit().catch(console.error);
+          EOF
+
+          node accessibility-check.js
+
+      - name: Accessibility Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: accessibility-report-$(date +%Y%m%d-%H%M%S)
+          path: accessibility-report.json
+          retention-days: 30
+
+  monitoring-summary:
+    runs-on: ubuntu-latest
+    needs: [health-check, performance-monitoring, security-monitoring, accessibility-monitoring]
+    if: always()
+
+    steps:
+      - name: Generate Monitoring Report
+        run: |
+          cat > monitoring-summary.md << EOF
+          # Vizualni Admin Monitoring Summary
+
+          **Timestamp**: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          ## 🏥 Health Checks
+          - **Production**: ${{ needs.health-check.result }}
+          - **Staging**: ${{ needs.health-check.result }}
+
+          ## ⚡ Performance Monitoring
+          - **Status**: ${{ needs.performance-monitoring.result }}
+          - **Score**: ${{ needs.performance-monitoring.outputs.performance-score || 'N/A' }}
+
+          ## 🔒 Security Monitoring
+          - **Status**: ${{ needs.security-monitoring.result }}
+          - **Vulnerabilities**: ${{ needs.security-monitoring.outputs.total-vulnerabilities || 'N/A' }}
+
+          ## ♿ Accessibility Monitoring
+          - **Status**: ${{ needs.accessibility-monitoring.result }}
+          - **Violations**: ${{ needs.accessibility-monitoring.outputs.total-violations || 'N/A' }}
+
+          ---
+          *Automated monitoring report*
+          EOF
+
+      - name: Store Monitoring Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: monitoring-summary-$(date +%Y%m%d-%H%M%S)
+          path: monitoring-summary.md
+          retention-days: 7

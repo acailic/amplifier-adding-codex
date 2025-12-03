@@ -1,5 +1,4 @@
 import React from 'react';
-import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useTranslation } from 'next-i18next';
 import Link from 'next/link';
 import MainLayout from '@/components/layout/MainLayout';
@@ -104,10 +103,4 @@ export default function DashboardPage() {
   );
 }
 
-export async function getServerSideProps({ locale }: { locale: string }) {
-  return {
-    props: {
-      ...(await serverSideTranslations(locale, ['common'])),
-    },
-  };
-}
+// Static export - getServerSideProps removed for static generation

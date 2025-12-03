@@ -1,0 +1,29 @@
+{
+  "files": [
+    {
+      "path": ".next/static/chunks/*.js",
+      "maxSize": "200kb",
+      "compression": "none"
+    },
+    {
+      "path": ".next/static/chunks/main*.js",
+      "maxSize": "50kb",
+      "compression": "none"
+    },
+    {
+      "path": ".next/static/chunks/framework*.js",
+      "maxSize": "45kb",
+      "compression": "none"
+    },
+    {
+      "path": ".next/static/chunks/pages/_app*.js",
+      "maxSize": "20kb",
+      "compression": "none"
+    },
+    {
+      "path": ".next/static/css/*.css",
+      "maxSize": "15kb",
+      "compression": "none"
+    }
+  ]
+}
