@@ -91,7 +91,7 @@ jobs:
       run: npx playwright install --with-deps
 
     - name: Build application
-      run: npm run build
+      run: npm run build:static
 
     - name: Run visual regression tests
       run: npm run test:visual
@@ -181,7 +181,7 @@ jobs:
       run: npx playwright install --with-deps
 
     - name: Build application
-      run: npm run build
+      run: npm run build:static
 
     - name: Run Lighthouse CI
       run: |
