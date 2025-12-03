@@ -12,7 +12,7 @@ appsettings.*.json
 # Dual-backend configuration overrides
 .claude/settings.local.json
 .codex/settings.local.toml
-
+.claude/env.txt
 # Dependencies and build cache
 node_modules
 .venv
