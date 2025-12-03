@@ -1,5 +1,4 @@
 import React from 'react';
-import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useTranslation } from 'next-i18next';
 import MainLayout from '@/components/layout/MainLayout';
 import AirQualityChart from '@/components/charts/AirQualityChart';
@@ -112,10 +111,4 @@ export default function AirQualityPage() {
   );
 }
 
-export async function getServerSideProps({ locale }: { locale: string }) {
-  return {
-    props: {
-      ...(await serverSideTranslations(locale, ['common'])),
-    },
-  };
-}
+// Static export - getServerSideProps removed for static generation
