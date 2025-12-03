@@ -1,0 +1,154 @@
+name: Visual Regression Tests
+
+on:
+  push:
+    branches: [ develop, main ]
+  pull_request:
+    branches: [ develop, main ]
+
+jobs:
+  visual-regression:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [20.x]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Needed for visual diff comparison
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+        working-directory: ./ai_working/vizualni-admin
+
+      - name: Build application
+        run: yarn build:fast
+        working-directory: ./ai_working/vizualni-admin
+
+      - name: Start application
+        run: |
+          yarn start &
+          echo "SERVER_PID=$!" >> $GITHUB_ENV
+          echo "Waiting for server to start..."
+          sleep 30
+        working-directory: ./ai_working/vizualni-admin
+        env:
+          PORT: 3000
+
+      - name: Run visual regression tests
+        run: |
+          npx playwright test --config=playwright.visual.config.ts
+        working-directory: ./ai_working/vizualni-admin
+        env:
+          CI: true
+          E2E_BASE_URL: http://localhost:3000
+
+      - name: Upload visual test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: visual-test-results-${{ github.run_number }}
+          path: |
+            ./ai_working/vizualni-admin/playwright-visual-report/
+            ./ai_working/vizualni-admin/screenshots/
+          retention-days: 30
+
+      - name: Stop application
+        if: always()
+        run: |
+          if [ ! -z "$SERVER_PID" ]; then
+            kill $SERVER_PID 2>/dev/null || true
+          fi
+
+      - name: Generate visual regression report
+        if: always()
+        run: |
+          REPORT_DIR="./ai_working/vizualni-admin/visual-reports"
+          mkdir -p "$REPORT_DIR"
+
+          # Count screenshots and diffs
+          CURRENT_SCREENSHOTS=$(find ./ai_working/vizualni-admin/screenshots/current -name "*.png" 2>/dev/null | wc -l)
+          BASELINE_SCREENSHOTS=$(find ./ai_working/vizualni-admin/screenshots/baseline -name "*.png" 2>/dev/null | wc -l)
+          DIFF_SCREENSHOTS=$(find ./ai_working/vizualni-admin/screenshots/diff -name "*.png" 2>/dev/null | wc -l)
+
+          cat > "$REPORT_DIR/visual-report.md" << EOF
+          # Visual Regression Test Report
+
+          ## Test Summary
+          - **Total Screenshots**: $CURRENT_SCREENSHOTS
+          - **Baseline Screenshots**: $BASELINE_SCREENSHOTS
+          - **Differences Found**: $DIFF_SCREENSHOTS
+          - **Status**: $(if [ "$DIFF_SCREENSHOTS" -eq 0 ]; then echo "✅ PASSED"; else echo "❌ DIFFERENCES DETECTED"; fi)
+
+          ## Test Environment
+          - **Commit**: ${{ github.sha }}
+          - **Branch**: ${{ github.ref_name }}
+          - **Build Number**: ${{ github.run_number }}
+          - **Timestamp**: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          ## Viewports Tested
+          - Mobile (375x667)
+          - Tablet (768x1024)
+          - Desktop (1280x720)
+          - Widescreen (1920x1080)
+
+          ## Browsers Tested
+          - Chrome
+          - Firefox
+          - Safari
+          - Edge
+
+          ## Theme Variants
+          - Light Mode
+          - Dark Mode
+          - High Contrast
+          - RTL Layout
+
+          EOF
+
+          # Add diff details if any exist
+          if [ "$DIFF_SCREENSHOTS" -gt 0 ]; then
+            echo "" >> "$REPORT_DIR/visual-report.md"
+            echo "## Visual Differences Detected" >> "$REPORT_DIR/visual-report.md"
+            echo "" >> "$REPORT_DIR/visual-report.md"
+
+            for diff in $(find ./ai_working/vizualni-admin/screenshots/diff -name "*.png" 2>/dev/null); do
+              filename=$(basename "$diff")
+              echo "### $filename" >> "$REPORT_DIR/visual-report.md"
+              echo "![Difference](screenshots/diff/$filename)" >> "$REPORT_DIR/visual-report.md"
+              echo "" >> "$REPORT_DIR/visual-report.md"
+            done
+          fi
+
+          echo "✅ Visual regression report generated"
+
+      - name: Comment PR with visual results
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = './ai_working/vizualni-admin/visual-reports/visual-report.md';
+
+            if (fs.existsSync(path)) {
+              const report = fs.readFileSync(path, 'utf8');
+
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: '## 🎨 Visual Regression Results\n\n' + report
+              });
+            }

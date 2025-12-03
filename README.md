@@ -385,6 +385,9 @@ uv run python .codex/tools/session_cleanup.py --session-id a1b2c3d4
 # Use specific profile
 ./amplify-codex.sh --profile ci
 
+# Resume a session (restores memory state and regenerates session_context.md for manual replay)
+./amplify-codex.sh --resume abc123
+
 # Skip initialization
 ./amplify-codex.sh --no-init
 
@@ -394,6 +397,17 @@ uv run python .codex/tools/session_cleanup.py --session-id a1b2c3d4
 # Show help
 ./amplify-codex.sh --help
 ```
+
+Resume mode does **not** auto-play the previous transcript. It reloads memory state, rebuilds `.codex/session_context.md`, and leaves you with a prompt bundle you can replay manually:
+
+```bash
+python scripts/codex_prompt.py \
+  --agent .codex/agents/<agent>.md \
+  --context .codex/session_context.md \
+  | codex exec -
+```
+
+Replace `<agent>` with the Codex agent you want to narrate the recap (for example, `analysis-engine`).
 
 ### Agent Conversion
 
@@ -417,8 +431,13 @@ make validate-codex-agents
 codex exec "Find and fix the authentication bug"
 # Routes to bug-hunter agent
 
-# Manual agent selection
-codex exec --agent zen-architect "Design the caching layer"
+> **Note:** Codex CLI v0.56 removed the legacy `--agent/--context-file` flags. Pipe a prepared agent prompt via stdin or call the `spawn_agent` helper.
+
+# Manual agent selection (Codex CLI now requires stdin piping)
+python scripts/codex_prompt.py \
+  --agent .codex/agents/zen-architect.md \
+  --task "Design the caching layer" \
+  | codex exec -
 
 # Programmatic usage
 from amplifier import spawn_agent
@@ -806,7 +825,13 @@ make test-agent-conversion
 1. Create agent in `.claude/agents/` following existing patterns
 2. Run conversion: `make convert-agents`
 3. Review converted agent in `.codex/agents/`
-4. Test with Codex: `codex exec --agent <name> "<test-task>"`
+4. Test with Codex:
+   ```bash
+   python scripts/codex_prompt.py \
+     --agent .codex/agents/<name>.md \
+     --task "<test-task>" \
+     | codex exec -
+   ```
 
 Most contributions require you to agree to a
 Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us

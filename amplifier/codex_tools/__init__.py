@@ -1,9 +1,33 @@
 """Codex-specific tools and utilities for Amplifier."""
 
+import importlib
+import sys
 from pathlib import Path
 from typing import Any
 
+_PACKAGE_ROOT = Path(__file__).resolve().parents[2]
+_CODEX_ROOT = _PACKAGE_ROOT / ".codex"
+_CODEX_TOOLS = _CODEX_ROOT / "tools"
+
+for _extra_path in (_CODEX_TOOLS, _CODEX_ROOT):
+    if _extra_path.exists():
+        _as_str = str(_extra_path)
+        if _as_str not in sys.path:
+            sys.path.insert(0, _as_str)
+
 from .agent_context_bridge import AgentContextBridge
+
+
+def _import_agent_analytics_server() -> Any | None:
+    """Dynamically import the AgentAnalyticsServer without static path assumptions."""
+    try:
+        module = importlib.import_module("mcp_servers.agent_analytics.server")
+        return module.AgentAnalyticsServer
+    except Exception:
+        return None
+
+
+AgentAnalyticsServer = _import_agent_analytics_server()
 
 # Create singleton bridge instance
 _BRIDGE = AgentContextBridge()
@@ -58,7 +82,7 @@ def inject_context_to_agent(
         Dictionary with agent invocation details including context metadata
     """
     # If it's a file path (string or Path), return metadata with that path
-    if isinstance(context_file_or_messages, (str, Path)):
+    if isinstance(context_file_or_messages, str | Path):
         from datetime import datetime
 
         return {
@@ -95,9 +119,31 @@ def cleanup_context_files():
     _BRIDGE.cleanup()
 
 
+def create_combined_context_file(
+    agent_definition: str,
+    task: str,
+    context_data: dict[str, Any] | None = None,
+    agent_name: str | None = None,
+) -> Path:
+    """Create combined markdown context file via shared bridge."""
+    create_combined = getattr(_BRIDGE, "create_combined_context_file", None)
+    if create_combined is None:
+        msg = "AgentContextBridge missing create_combined_context_file implementation"
+        raise AttributeError(msg)
+
+    return create_combined(
+        agent_definition=agent_definition,
+        task=task,
+        context_data=context_data,
+        agent_name=agent_name,
+    )
+
+
 __all__ = [
     "serialize_context",
     "inject_context_to_agent",
     "extract_agent_result",
     "cleanup_context_files",
+    "create_combined_context_file",
+    "AgentAnalyticsServer",
 ]

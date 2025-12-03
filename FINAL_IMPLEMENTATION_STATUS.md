@@ -46,6 +46,7 @@ All critical and high-priority issues have been resolved. The remaining 2 commen
 - `--agent=<file>` for agent definition
 - `--context=<file>` for session context
 - Proper variable initialization
+- **Update 2025-11:** Codex CLI removed these flags; current guidance is to pipe combined prompts into `codex exec -` (see `scripts/codex_prompt.py` and DISCO-2025-11-09 entry).
 
 **Files Changed**:
 - `amplifier/core/agent_backend.py` (spawn_agent method)

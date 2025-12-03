@@ -21,6 +21,16 @@ logger = HookLogger("post_tool_use")
 try:
     from amplifier.memory import MemoryStore
     from amplifier.validation import ClaimValidator
+
+    # Import token tracker if available
+    try:
+        from amplifier.session_monitor.models import MonitorConfig
+        from amplifier.session_monitor.token_tracker import TokenTracker
+
+        TOKEN_MONITORING_AVAILABLE = True
+    except ImportError:
+        TOKEN_MONITORING_AVAILABLE = False
+        logger.debug("Token monitoring not available")
 except ImportError as e:
     logger.error(f"Failed to import amplifier modules: {e}")
     # Exit gracefully to not break hook chain
@@ -109,8 +119,55 @@ async def main():
         else:
             logger.info("No contradictions found")
 
-    except Exception as e:
-        logger.exception("Error during claim validation", e)
+        # Token monitoring (if available)
+        if TOKEN_MONITORING_AVAILABLE:
+            token_monitoring_enabled = os.getenv("TOKEN_MONITORING_ENABLED", "true").lower() in ["true", "1", "yes"]
+            if token_monitoring_enabled:
+                try:
+                    tracker = TokenTracker()
+                    workspace_id = Path.cwd().name
+                    usage = tracker.get_current_usage(workspace_id)
+
+                    if usage.source == "no_files":
+                        logger.debug("No session files found for token monitoring")
+                    else:
+                        logger.info(f"Token usage snapshot: {usage.usage_pct:.1f}% ({usage.estimated_tokens:,} tokens)")
+
+                        monitor_config = MonitorConfig()
+                        warning_threshold = monitor_config.token_warning_threshold
+                        critical_threshold = monitor_config.token_critical_threshold
+
+                        history_file = Path(".codex/workspaces") / workspace_id / "token_history.jsonl"
+                        history_file.parent.mkdir(parents=True, exist_ok=True)
+                        history_entry = {
+                            "timestamp": usage.timestamp.isoformat(),
+                            "estimated_tokens": usage.estimated_tokens,
+                            "usage_pct": usage.usage_pct,
+                            "source": usage.source,
+                        }
+                        with open(history_file, "a") as f:
+                            f.write(json.dumps(history_entry) + "\n")
+
+                        if usage.usage_pct >= critical_threshold:
+                            warning_msg = (
+                                f"🔴 Token usage critical: {usage.usage_pct:.1f}% ({usage.estimated_tokens:,} tokens)"
+                            )
+                            logger.warning(warning_msg)
+                            warning_file = Path(".codex/workspaces") / workspace_id / "token_warning.txt"
+                            warning_file.parent.mkdir(parents=True, exist_ok=True)
+                            with open(warning_file, "a") as f:
+                                f.write(f"{usage.timestamp.isoformat()}: {warning_msg}\n")
+                        elif usage.usage_pct >= warning_threshold:
+                            warning_msg = (
+                                f"🟡 Token usage high: {usage.usage_pct:.1f}% ({usage.estimated_tokens:,} tokens)"
+                            )
+                            logger.warning(warning_msg)
+
+                except Exception as e:
+                    logger.error(f"Error during token monitoring: {e}")
+
+    except Exception:
+        logger.exception("Error during claim validation")
         json.dump({}, sys.stdout)
 
 

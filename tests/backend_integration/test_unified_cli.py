@@ -10,21 +10,14 @@ import os
 import subprocess
 import tempfile
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import Mock
 from unittest.mock import patch
 
 import pytest
 
-# Import modules under test
-try:
-    from amplifier.core.backend import BackendFactory
-    from amplifier.core.config import get_backend_config
-    from amplifier.core.config import is_backend_available
-    from amplify import main
-except ImportError:
-    # Modules not yet implemented - tests will use mocks
-    pass
-
+# Import modules under test - currently none needed for these tests
+from amplifier.core.config import BackendConfig
 
 # Test Fixtures (assuming these are defined in conftest.py)
 
@@ -134,8 +127,10 @@ def mock_codex_cli():
 @pytest.fixture
 def mock_both_backends_available():
     """Mock both backends as available."""
-    with patch("amplifier.core.config.is_backend_available") as mock_is_available:
-        mock_is_available.return_value = True
+    with (
+        patch("amplifier.core.config.is_backend_available", return_value=True),
+        patch("amplify.is_backend_available", return_value=True),
+    ):
         yield
 
 
@@ -146,7 +141,10 @@ def mock_only_claude_available():
     def mock_is_available(backend):
         return backend == "claude"
 
-    with patch("amplifier.core.config.is_backend_available", side_effect=mock_is_available):
+    with (
+        patch("amplifier.core.config.is_backend_available", side_effect=mock_is_available),
+        patch("amplify.is_backend_available", side_effect=mock_is_available),
+    ):
         yield
 
 
@@ -157,7 +155,10 @@ def mock_only_codex_available():
     def mock_is_available(backend):
         return backend == "codex"
 
-    with patch("amplifier.core.config.is_backend_available", side_effect=mock_is_available):
+    with (
+        patch("amplifier.core.config.is_backend_available", side_effect=mock_is_available),
+        patch("amplify.is_backend_available", side_effect=mock_is_available),
+    ):
         yield
 
 
@@ -179,6 +180,21 @@ def claude_env(monkeypatch):
 def codex_env(monkeypatch):
     """Set environment for Codex backend."""
     monkeypatch.setenv("AMPLIFIER_BACKEND", "codex")
+
+
+def make_cli_args(**overrides):
+    """Build a namespace that mimics argparse output."""
+    defaults = {
+        "backend": None,
+        "profile": "development",
+        "config": None,
+        "list_backends": False,
+        "info": None,
+        "version": False,
+        "args": [],
+    }
+    defaults.update(overrides)
+    return SimpleNamespace(**defaults)
 
 
 # Test Classes
@@ -272,53 +288,108 @@ class TestCLIBackendSelection:
         """CLI argument takes precedence."""
         monkeypatch.setenv("AMPLIFIER_BACKEND", "claude")
 
+        args = make_cli_args(backend="codex", args=["exec", "task"])
+        config = SimpleNamespace(amplifier_backend="claude", amplifier_backend_auto_detect=False)
+
         with (
-            patch("amplify.main") as mock_main,
-            patch("amplify.parse_args") as mock_parse_args,
-            patch("amplify.launch_claude_code") as mock_launch,
+            patch("amplify.parse_args", return_value=args),
+            patch("amplify.get_backend_config", return_value=config),
+            patch("amplify.validate_backend", return_value=True),
+            patch("amplify.launch_codex", return_value=0) as mock_launch_codex,
+            patch("amplify.launch_claude_code") as mock_launch_claude,
         ):
-            mock_args = Mock()
-            mock_args.backend = "codex"
-            mock_args.list_backends = False
-            mock_args.info = None
-            mock_args.version = False
-            mock_args.config = None
-            mock_args.args = []
-            mock_parse_args.return_value = mock_args
+            from amplify import main
 
-            mock_main.return_value = 0
+            exit_code = main()
 
-            # This would normally call main(), but we're testing the logic
-            # In actual test, we'd invoke the CLI and check which backend was selected
-            # For now, verify the precedence logic in the code
+        assert exit_code == 0
+        mock_launch_codex.assert_called_once_with(["exec", "task"], "development")
+        mock_launch_claude.assert_not_called()
 
     def test_cli_backend_selection_from_env_var(self, mock_both_backends_available, codex_env):
         """Environment variable is used."""
-        # Similar to above, test the selection logic
-        pass
+        args = make_cli_args(backend=None)
+        config = SimpleNamespace(amplifier_backend="codex", amplifier_backend_auto_detect=False)
 
-    def test_cli_backend_selection_from_config_file(self, mock_both_backends_available, temp_dir):
+        with (
+            patch("amplify.parse_args", return_value=args),
+            patch("amplify.get_backend_config", return_value=config),
+            patch("amplify.validate_backend", return_value=True),
+            patch("amplify.launch_codex", return_value=0) as mock_launch_codex,
+        ):
+            from amplify import main
+
+            exit_code = main()
+
+        assert exit_code == 0
+        mock_launch_codex.assert_called_once_with([], "development")
+
+    def test_cli_backend_selection_from_config_file(self, mock_both_backends_available, temp_dir, monkeypatch):
         """Config file is read."""
         env_file = temp_dir / ".env"
         env_file.write_text("AMPLIFIER_BACKEND=codex")
 
-        with patch("os.chdir", lambda x: None), patch("amplify.get_backend_config") as mock_config:
-            mock_config.return_value.amplifier_backend = "codex"
-            # Test that config is loaded and used
-            pass
+        monkeypatch.chdir(temp_dir)
+        monkeypatch.delenv("ENV_FILE", raising=False)
+
+        def load_config():
+            return BackendConfig()
+
+        args = make_cli_args(backend=None)
+
+        with (
+            patch("amplify.parse_args", return_value=args),
+            patch("amplify.get_backend_config", side_effect=load_config),
+            patch("amplify.validate_backend", return_value=True),
+            patch("amplify.launch_codex", return_value=0) as mock_launch_codex,
+        ):
+            from amplify import main
+
+            exit_code = main()
+
+        assert exit_code == 0
+        mock_launch_codex.assert_called_once_with([], "development")
 
     def test_cli_backend_selection_auto_detect(self, mock_only_codex_available, monkeypatch):
         """Auto-detection runs."""
         monkeypatch.delenv("AMPLIFIER_BACKEND", raising=False)
         monkeypatch.setenv("AMPLIFIER_BACKEND_AUTO_DETECT", "true")
 
-        # Test auto-detection logic
-        pass
+        args = make_cli_args(backend=None)
+        config = SimpleNamespace(amplifier_backend=None, amplifier_backend_auto_detect=True)
+
+        with (
+            patch("amplify.parse_args", return_value=args),
+            patch("amplify.get_backend_config", return_value=config),
+            patch("amplify.detect_backend", return_value="codex") as mock_detect,
+            patch("amplify.validate_backend", return_value=True),
+            patch("amplify.launch_codex", return_value=0) as mock_launch_codex,
+        ):
+            from amplify import main
+
+            exit_code = main()
+
+        mock_detect.assert_called_once()
+        assert exit_code == 0
+        mock_launch_codex.assert_called_once_with([], "development")
 
     def test_cli_backend_selection_default_fallback(self, mock_both_backends_available, clean_env):
         """Defaults to Claude Code."""
-        # Test default fallback
-        pass
+        args = make_cli_args(backend=None)
+        config = SimpleNamespace(amplifier_backend=None, amplifier_backend_auto_detect=False)
+
+        with (
+            patch("amplify.parse_args", return_value=args),
+            patch("amplify.get_backend_config", return_value=config),
+            patch("amplify.validate_backend", return_value=True),
+            patch("amplify.launch_claude_code", return_value=0) as mock_launch_claude,
+        ):
+            from amplify import main
+
+            exit_code = main()
+
+        assert exit_code == 0
+        mock_launch_claude.assert_called_once()
 
     def test_cli_backend_selection_precedence_chain(self, mock_both_backends_available, temp_dir, monkeypatch):
         """CLI arg wins precedence."""
@@ -326,90 +397,153 @@ class TestCLIBackendSelection:
         env_file.write_text("AMPLIFIER_BACKEND=claude")
         monkeypatch.setenv("AMPLIFIER_BACKEND", "codex")
 
-        # Test that CLI arg overrides env and config
-        pass
+        args = make_cli_args(backend="claude")
+        config = SimpleNamespace(amplifier_backend="codex", amplifier_backend_auto_detect=False)
+
+        with (
+            patch("amplify.parse_args", return_value=args),
+            patch("amplify.get_backend_config", return_value=config),
+            patch("amplify.validate_backend", return_value=True),
+            patch("amplify.launch_claude_code", return_value=0) as mock_launch_claude,
+            patch("amplify.launch_codex") as mock_launch_codex,
+        ):
+            from amplify import main
+
+            exit_code = main()
+
+        assert exit_code == 0
+        mock_launch_claude.assert_called_once()
+        mock_launch_codex.assert_not_called()
 
 
 class TestCLIBackendLaunching:
     """Test launching backends via CLI."""
 
-    def test_cli_launch_claude_code(self, mock_claude_cli, mock_both_backends_available):
+    def test_cli_launch_claude_code(self, mock_both_backends_available):
         """Launch Claude Code."""
-        with patch("subprocess.run", mock_claude_cli), patch("amplify.validate_backend", return_value=True):
-            # Simulate CLI call
-            with patch("sys.argv", ["amplify.py", "--backend", "claude"]):
-                # In real test, we'd check subprocess.run was called correctly
-                pass
+        mock_result = Mock(returncode=0, stdout="ok", stderr="")
+        with patch("subprocess.run", return_value=mock_result) as mock_run:
+            from amplify import launch_claude_code
 
-    def test_cli_launch_claude_with_passthrough_args(self, mock_claude_cli, mock_both_backends_available):
+            exit_code = launch_claude_code(["status"])
+
+        assert exit_code == 0
+        mock_run.assert_called_once_with(["claude", "status"], check=False)
+
+    def test_cli_launch_claude_with_passthrough_args(self, mock_both_backends_available):
         """Launch Claude with passthrough args."""
-        with patch("subprocess.run", mock_claude_cli):
-            # Test passthrough arguments
-            pass
+        mock_result = Mock(returncode=0, stdout="ok", stderr="")
+        with patch("subprocess.run", return_value=mock_result) as mock_run:
+            from amplify import launch_claude_code
 
-    def test_cli_launch_codex_with_wrapper(
-        self, integration_test_project, mock_codex_cli, mock_both_backends_available
-    ):
+            launch_claude_code(["--foo", "bar"])
+
+        mock_run.assert_called_once()
+        assert mock_run.call_args[0][0][-2:] == ["--foo", "bar"]
+
+    def test_cli_launch_codex_with_wrapper(self, integration_test_project, mock_both_backends_available, monkeypatch):
         """Launch Codex with wrapper."""
         wrapper = integration_test_project / "amplify-codex.sh"
         wrapper.write_text("#!/bin/bash\necho 'Wrapper executed'")
         wrapper.chmod(0o755)
+        (integration_test_project / ".codex" / "config.toml").write_text("[profiles.development]\n")
 
-        with patch("subprocess.run", mock_codex_cli):
-            # Test wrapper is used
-            pass
+        mock_result = Mock(returncode=0, stdout="ok", stderr="")
+        monkeypatch.chdir(integration_test_project)
+
+        with patch("subprocess.run", return_value=mock_result) as mock_run:
+            from amplify import launch_codex
+
+            exit_code = launch_codex(["--diagnostic"], profile="development")
+
+        assert exit_code == 0
+        cmd = mock_run.call_args[0][0]
+        assert cmd[:3] == ["./amplify-codex.sh", "--profile", "development"]
+        assert cmd[-1] == "--diagnostic"
 
     def test_cli_launch_codex_direct_no_wrapper(
-        self, integration_test_project, mock_codex_cli, mock_both_backends_available
+        self, integration_test_project, mock_both_backends_available, monkeypatch
     ):
         """Launch Codex directly without wrapper."""
-        with patch("subprocess.run", mock_codex_cli):
-            # Test direct launch with warning
-            pass
+        (integration_test_project / ".codex" / "config.toml").write_text("[profiles.development]\n")
+        monkeypatch.chdir(integration_test_project)
+
+        mock_result = Mock(returncode=0, stdout="ok", stderr="")
+        with patch("subprocess.run", return_value=mock_result) as mock_run:
+            from amplify import launch_codex
+
+            exit_code = launch_codex(["--diagnostic"], profile="development")
+
+        assert exit_code == 0
+        cmd = mock_run.call_args[0][0]
+        assert cmd[:4] == ["codex", "--profile", "development", "--config"]
+        assert cmd[-1] == "--diagnostic"
 
     def test_cli_launch_codex_with_passthrough_args(
-        self, integration_test_project, mock_codex_cli, mock_both_backends_available
+        self, integration_test_project, mock_both_backends_available, monkeypatch
     ):
         """Launch Codex with passthrough args."""
-        with patch("subprocess.run", mock_codex_cli):
-            # Test passthrough arguments
-            pass
+        wrapper = integration_test_project / "amplify-codex.sh"
+        wrapper.write_text("#!/bin/bash\nexit 0")
+        wrapper.chmod(0o755)
+        mock_result = Mock(returncode=0, stdout="ok", stderr="")
+        monkeypatch.chdir(integration_test_project)
+
+        with patch("subprocess.run", return_value=mock_result) as mock_run:
+            from amplify import launch_codex
+
+            launch_codex(["exec", "--task", "Fix bug"], profile="ci")
+
+        cmd = mock_run.call_args[0][0]
+        assert cmd[:3] == ["./amplify-codex.sh", "--profile", "ci"]
+        assert cmd[-3:] == ["exec", "--task", "Fix bug"]
 
 
 class TestCLISpecialCommands:
     """Test --list-backends, --info, --version."""
 
     def test_cli_list_backends_both_available(self, mock_both_backends_available, capsys):
-        """List both backends."""
+        """List both backends via CLI flag."""
         with patch("amplify.list_backends") as mock_list:
-            mock_list.return_value = None
+            mock_list.side_effect = lambda: print("Claude available\nCodex available")
 
-            # Simulate CLI call
             with patch("sys.argv", ["amplify.py", "--list-backends"]):
                 from amplify import main
 
                 main()
 
-            captured = capsys.readouterr()
-            # Verify output contains both backends
-            assert "claude" in captured.out.lower()
-            assert "codex" in captured.out.lower()
+        captured = capsys.readouterr()
+        assert "claude" in captured.out.lower()
+        assert "codex" in captured.out.lower()
+        mock_list.assert_called_once()
 
     def test_cli_list_backends_only_claude(self, mock_only_claude_available, capsys):
-        """List only Claude."""
-        # Similar test
-        pass
+        """List output when only Claude available."""
+        with (
+            patch("amplifier.core.backend.BackendFactory.get_available_backends", return_value=["claude"]),
+            patch("amplify.get_backend_config", return_value=SimpleNamespace(amplifier_backend="claude")),
+        ):
+            from amplify import list_backends
 
-    def test_cli_list_backends_none_available(self, monkeypatch, capsys):
-        """List when none available."""
+            list_backends()
 
-        def mock_is_available(backend):
-            return False
+        captured = capsys.readouterr()
+        assert "claude" in captured.out.lower()
+        assert "codex" in captured.out.lower()
+        assert "not available" in captured.out.lower()
 
-        monkeypatch.setattr("amplify.is_backend_available", mock_is_available)
+    def test_cli_list_backends_none_available(self, capsys):
+        """List output when no backends available."""
+        with (
+            patch("amplifier.core.backend.BackendFactory.get_available_backends", return_value=[]),
+            patch("amplify.get_backend_config", return_value=SimpleNamespace(amplifier_backend="claude")),
+        ):
+            from amplify import list_backends
 
-        # Test error message
-        pass
+            list_backends()
+
+        captured = capsys.readouterr()
+        assert "no backends available" in captured.out.lower()
 
     def test_cli_show_backend_info_claude(self, mock_only_claude_available, capsys):
         """Show Claude info."""
@@ -426,8 +560,15 @@ class TestCLISpecialCommands:
 
     def test_cli_show_backend_info_codex(self, mock_only_codex_available, capsys):
         """Show Codex info."""
-        # Similar test
-        pass
+        with patch("amplify.show_backend_info") as mock_info:
+            mock_info.return_value = None
+
+            with patch("sys.argv", ["amplify.py", "--info", "codex"]):
+                from amplify import main
+
+                main()
+
+        mock_info.assert_called_with("codex")
 
     def test_cli_show_version(self, capsys):
         """Show version."""
@@ -446,31 +587,79 @@ class TestCLISpecialCommands:
 class TestCLIConfigurationLoading:
     """Test configuration file loading and precedence."""
 
-    def test_cli_loads_config_from_default_env_file(self, temp_dir, mock_both_backends_available):
+    def test_cli_loads_config_from_default_env_file(self, temp_dir, mock_both_backends_available, monkeypatch):
         """Load from default .env."""
         env_file = temp_dir / ".env"
         env_file.write_text("AMPLIFIER_BACKEND=codex")
 
-        with patch("os.chdir", lambda x: None):
-            # Test config loading
-            pass
+        monkeypatch.chdir(temp_dir)
+        monkeypatch.delenv("ENV_FILE", raising=False)
 
-    def test_cli_loads_config_from_custom_file(self, temp_dir, mock_both_backends_available):
+        args = make_cli_args()
+
+        with (
+            patch("amplify.parse_args", return_value=args),
+            patch("amplify.get_backend_config", side_effect=BackendConfig),
+            patch("amplify.validate_backend", return_value=True),
+            patch("amplify.launch_codex", return_value=0) as mock_launch_codex,
+        ):
+            from amplify import main
+
+            exit_code = main()
+
+        assert exit_code == 0
+        mock_launch_codex.assert_called_once_with([], "development")
+
+    def test_cli_loads_config_from_custom_file(self, temp_dir, mock_both_backends_available, monkeypatch):
         """Load from custom config file."""
         custom_env = temp_dir / ".env.production"
         custom_env.write_text("AMPLIFIER_BACKEND=codex")
 
-        # Test custom config loading
-        pass
+        monkeypatch.chdir(temp_dir)
+        monkeypatch.delenv("ENV_FILE", raising=False)
+
+        args = make_cli_args(config=".env.production")
+
+        def load_config():
+            return BackendConfig()
+
+        with (
+            patch("amplify.parse_args", return_value=args),
+            patch("amplify.get_backend_config", side_effect=load_config),
+            patch("amplify.validate_backend", return_value=True),
+            patch("amplify.launch_codex", return_value=0) as mock_launch_codex,
+        ):
+            from amplify import main
+
+            exit_code = main()
+
+        assert os.environ.get("ENV_FILE") == ".env.production"
+        monkeypatch.delenv("ENV_FILE", raising=False)
+        assert exit_code == 0
+        mock_launch_codex.assert_called_once_with([], "development")
 
     def test_cli_config_override_with_env_var(self, temp_dir, mock_both_backends_available, monkeypatch):
         """Env var overrides config file."""
         env_file = temp_dir / ".env"
         env_file.write_text("AMPLIFIER_BACKEND=claude")
         monkeypatch.setenv("AMPLIFIER_BACKEND", "codex")
+        monkeypatch.chdir(temp_dir)
+        monkeypatch.delenv("ENV_FILE", raising=False)
 
-        # Test precedence
-        pass
+        args = make_cli_args()
+
+        with (
+            patch("amplify.parse_args", return_value=args),
+            patch("amplify.get_backend_config", side_effect=BackendConfig),
+            patch("amplify.validate_backend", return_value=True),
+            patch("amplify.launch_codex", return_value=0) as mock_launch_codex,
+        ):
+            from amplify import main
+
+            exit_code = main()
+
+        assert exit_code == 0
+        mock_launch_codex.assert_called_once_with([], "development")
 
     def test_cli_config_override_with_cli_arg(self, temp_dir, mock_both_backends_available, monkeypatch):
         """CLI arg overrides everything."""
@@ -478,8 +667,25 @@ class TestCLIConfigurationLoading:
         env_file.write_text("AMPLIFIER_BACKEND=codex")
         monkeypatch.setenv("AMPLIFIER_BACKEND", "codex")
 
-        # Test CLI precedence
-        pass
+        monkeypatch.chdir(temp_dir)
+        monkeypatch.delenv("ENV_FILE", raising=False)
+
+        args = make_cli_args(backend="claude")
+
+        with (
+            patch("amplify.parse_args", return_value=args),
+            patch("amplify.get_backend_config", side_effect=BackendConfig),
+            patch("amplify.validate_backend", return_value=True),
+            patch("amplify.launch_claude_code", return_value=0) as mock_launch_claude,
+            patch("amplify.launch_codex") as mock_launch_codex,
+        ):
+            from amplify import main
+
+            exit_code = main()
+
+        assert exit_code == 0
+        mock_launch_claude.assert_called_once()
+        mock_launch_codex.assert_not_called()
 
 
 class TestCLIErrorHandling:
@@ -487,14 +693,17 @@ class TestCLIErrorHandling:
 
     def test_cli_backend_not_available_error(self, mock_only_claude_available, capsys):
         """Backend not available error."""
-        with patch("sys.argv", ["amplify.py", "--backend", "codex"]):
+        with (
+            patch("sys.argv", ["amplify.py", "--backend", "codex"]),
+            patch("amplify.validate_backend", return_value=False),
+        ):
             from amplify import main
 
             exit_code = main()
 
-            assert exit_code == 1
-            captured = capsys.readouterr()
-            assert "not available" in captured.out
+        assert exit_code == 1
+        captured = capsys.readouterr()
+        assert "validation failed" in captured.out.lower()
 
     def test_cli_keyboard_interrupt(self, mock_both_backends_available, monkeypatch):
         """Handle keyboard interrupt."""
@@ -519,27 +728,41 @@ class TestCLIErrorHandling:
 
         monkeypatch.setattr("subprocess.run", mock_run)
 
-        # Test error handling
-        pass
+        with patch("sys.argv", ["amplify.py", "--backend", "claude"]):
+            from amplify import main
+
+            exit_code = main()
+
+        assert exit_code == 1
 
     def test_cli_invalid_profile(self, mock_both_backends_available):
         """Invalid profile error."""
         with patch("sys.argv", ["amplify.py", "--backend", "codex", "--profile", "invalid"]):
             from amplify import main
 
-            exit_code = main()
+            with pytest.raises(SystemExit) as exc:
+                main()
 
-            assert exit_code != 0
+        assert exc.value.code == 2
 
     def test_cli_missing_config_file(self, temp_dir, mock_both_backends_available):
         """Missing config file handling."""
-        with patch("sys.argv", ["amplify.py", "--config", "nonexistent.env"]):
+        with (
+            patch("sys.argv", ["amplify.py", "--config", "nonexistent.env"]),
+            patch("amplify.validate_backend", return_value=True),
+            patch(
+                "amplify.get_backend_config",
+                return_value=SimpleNamespace(amplifier_backend="claude", amplifier_backend_auto_detect=False),
+            ),
+            patch("amplify.launch_claude_code", return_value=0),
+            patch("amplify.launch_codex") as mock_launch_codex,
+        ):
             from amplify import main
 
             exit_code = main()
 
-            # Should continue with defaults
-            assert exit_code == 0
+        assert exit_code == 0
+        mock_launch_codex.assert_not_called()
 
 
 class TestCLIExitCodes:
@@ -547,13 +770,15 @@ class TestCLIExitCodes:
 
     def test_cli_exit_code_success(self, mock_both_backends_available, mock_claude_cli):
         """Successful exit."""
-        with patch("subprocess.run", mock_claude_cli):
-            with patch("sys.argv", ["amplify.py", "--backend", "claude"]):
-                from amplify import main
+        with (
+            patch("subprocess.run", mock_claude_cli),
+            patch("sys.argv", ["amplify.py", "--backend", "claude"]),
+        ):
+            from amplify import main
 
-                exit_code = main()
+            exit_code = main()
 
-                assert exit_code == 0
+            assert exit_code == 0
 
     def test_cli_exit_code_backend_failure(self, mock_both_backends_available, mock_codex_cli):
         """Backend failure exit."""
@@ -565,24 +790,26 @@ class TestCLIExitCodes:
             result.stderr = "Error"
             return result
 
-        with patch("subprocess.run", failing_cli):
-            with patch("sys.argv", ["amplify.py", "--backend", "codex"]):
-                from amplify import main
-
-                exit_code = main()
-
-                assert exit_code == 1
-
-    def test_cli_exit_code_validation_failure(self, monkeypatch, capsys):
-        """Validation failure exit."""
-        monkeypatch.setattr("amplify.validate_backend", lambda x: False)
-
-        with patch("sys.argv", ["amplify.py", "--backend", "invalid"]):
+        with (
+            patch("subprocess.run", failing_cli),
+            patch("sys.argv", ["amplify.py", "--backend", "codex"]),
+        ):
             from amplify import main
 
             exit_code = main()
 
             assert exit_code == 1
+
+    def test_cli_exit_code_validation_failure(self, monkeypatch, capsys):
+        """Validation failure exit."""
+        monkeypatch.setattr("amplify.validate_backend", lambda x: False)
+
+        with patch("sys.argv", ["amplify.py", "--backend", "claude"]):
+            from amplify import main
+
+            exit_code = main()
+
+        assert exit_code == 1
 
 
 class TestCLIIntegration:
@@ -590,30 +817,48 @@ class TestCLIIntegration:
 
     def test_cli_end_to_end_claude(self, integration_test_project, mock_claude_cli, mock_memory_system):
         """Full Claude workflow."""
-        with patch("subprocess.run", mock_claude_cli), patch("os.chdir", lambda x: None):
-            with patch("sys.argv", ["amplify.py", "--backend", "claude"]):
-                from amplify import main
+        with (
+            patch("subprocess.run", mock_claude_cli),
+            patch("os.chdir", lambda x: None),
+            patch("sys.argv", ["amplify.py", "--backend", "claude"]),
+        ):
+            from amplify import main
 
-                exit_code = main()
+            exit_code = main()
 
-                assert exit_code == 0
+            assert exit_code == 0
 
     def test_cli_end_to_end_codex(self, integration_test_project, mock_codex_cli, mock_memory_system):
         """Full Codex workflow."""
-        with patch("subprocess.run", mock_codex_cli):
-            with patch("sys.argv", ["amplify.py", "--backend", "codex"]):
-                from amplify import main
+        with (
+            patch("subprocess.run", mock_codex_cli),
+            patch("sys.argv", ["amplify.py", "--backend", "codex"]),
+        ):
+            from amplify import main
 
-                exit_code = main()
+            exit_code = main()
 
-                assert exit_code == 0
+            assert exit_code == 0
 
     def test_cli_backend_switching_in_same_session(
         self, integration_test_project, mock_both_backends_available, mock_claude_cli, mock_codex_cli
     ):
         """Switch backends in same session."""
-        # Test switching between backends
-        pass
+        with (
+            patch("subprocess.run", mock_claude_cli),
+            patch("sys.argv", ["amplify.py", "--backend", "claude"]),
+        ):
+            from amplify import main
+
+            assert main() == 0
+
+        with (
+            patch("subprocess.run", mock_codex_cli),
+            patch("sys.argv", ["amplify.py", "--backend", "codex"]),
+        ):
+            from amplify import main
+
+            assert main() == 0
 
 
 # Run tests if executed directly

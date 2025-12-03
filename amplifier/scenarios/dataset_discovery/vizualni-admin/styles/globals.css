@@ -1,0 +1,302 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Merriweather:wght@300;400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/* Design Tokens - Serbian WCAG AAA Compliant System */
+@import './tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    @apply bg-gray-50 text-gray-900;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Inter', sans-serif;
+    @apply font-semibold;
+  }
+
+  .serbian-font {
+    font-family: 'Inter', sans-serif;
+  }
+
+  .serbian-serif {
+    font-family: 'Merriweather', serif;
+  }
+}
+
+@layer components {
+  /* Enhanced Button Components - World-class interactions */
+  .btn {
+    @apply inline-flex items-center justify-center font-medium transition-all-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+    min-height: var(--button-height-md);
+    padding: var(--space-2) var(--space-4);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    border: 1px solid transparent;
+  }
+
+  .btn-sm {
+    @apply text-xs px-3 py-1.5;
+    min-height: var(--button-height-sm);
+    border-radius: var(--radius-lg);
+  }
+
+  .btn-md {
+    @apply px-4 py-2;
+    min-height: var(--button-height-md);
+    border-radius: var(--radius-xl);
+  }
+
+  .btn-lg {
+    @apply px-6 py-3 text-base;
+    min-height: var(--button-height-lg);
+    border-radius: var(--radius-2xl);
+  }
+
+  .btn-xl {
+    @apply px-8 py-4 text-lg;
+    min-height: var(--button-height-xl);
+    border-radius: var(--radius-3xl);
+  }
+
+  .btn-primary {
+    @apply btn bg-serbia-red-600 hover:bg-serbia-red-700 text-white focus:ring-serbia-red-500 shadow-serbia hover:shadow-lg transition-all-300;
+  }
+
+  .btn-primary:active {
+    @apply transform scale-95 transition-transform-200;
+  }
+
+  .btn-secondary {
+    @apply btn bg-serbia-blue-600 hover:bg-serbia-blue-700 text-white focus:ring-serbia-blue-500 shadow-serbia-blue hover:shadow-lg transition-all-300;
+  }
+
+  .btn-secondary:active {
+    @apply transform scale-95 transition-transform-200;
+  }
+
+  .btn-accent {
+    @apply btn bg-serbia-green-500 hover:bg-serbia-green-600 text-white focus:ring-serbia-green-400 shadow-lg hover:shadow-xl transition-all-300;
+  }
+
+  .btn-accent:active {
+    @apply transform scale-95 transition-transform-200;
+  }
+
+  .btn-outline {
+    @apply btn border-2 border-serbia-red-600 text-serbia-red-600 hover:bg-serbia-red-600 hover:text-white focus:ring-serbia-red-500 transition-colors-200 active:scale-95 active:transition-transform-200;
+  }
+
+  .btn-outline-secondary {
+    @apply btn border-2 border-serbia-blue-600 text-serbia-blue-600 hover:bg-serbia-blue-600 hover:text-white focus:ring-serbia-blue-500 transition-colors-200 active:scale-95 active:transition-transform-200;
+  }
+
+  .btn-ghost {
+    @apply btn text-serbia-red-600 hover:bg-serbia-red-50 focus:ring-serbia-red-500 transition-colors-200 active:scale-95 active:transition-transform-200;
+  }
+
+  .btn-ghost-secondary {
+    @apply btn text-serbia-blue-600 hover:bg-serbia-blue-50 focus:ring-serbia-blue-500 transition-colors-200 active:scale-95 active:transition-transform-200;
+  }
+
+  .btn-white {
+    @apply btn bg-white hover:bg-gray-50 text-gray-900 border border-gray-300 focus:ring-gray-500 shadow-sm hover:shadow-md transition-all-300 active:scale-95 active:transition-transform-200;
+  }
+
+  /* Enhanced Card Components */
+  .card {
+    @apply bg-white rounded-2xl border border-neutral-200 p-6 transition-all-300 hover:shadow-lg;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .card-header {
+    @apply border-b border-neutral-200 pb-4 mb-4;
+  }
+
+  .card-title {
+    @apply text-xl font-semibold text-neutral-900 mb-2;
+  }
+
+  .card-description {
+    @apply text-neutral-600 leading-relaxed;
+  }
+
+  .metric-card {
+    @apply bg-white rounded-2xl border border-neutral-200 p-6 transition-all-300 hover:shadow-xl hover:-translate-y-1;
+    box-shadow: var(--shadow-base);
+  }
+
+  .metric-value {
+    @apply text-3xl font-bold text-neutral-900 mb-1;
+  }
+
+  .metric-label {
+    @apply text-sm font-medium text-neutral-600 mb-2;
+  }
+
+  .metric-change {
+    @apply inline-flex items-center text-sm font-medium;
+  }
+
+  .metric-change-positive {
+    @apply text-success-600;
+  }
+
+  .metric-change-negative {
+    @apply text-error-600;
+  }
+
+  .metric-change-neutral {
+    @apply text-neutral-600;
+  }
+
+  /* Enhanced Sidebar Components */
+  .sidebar {
+    @apply bg-white border-r border-neutral-200 w-64 min-h-screen transition-all-300;
+  }
+
+  .sidebar-item {
+    @apply flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-colors-200 mb-1;
+  }
+
+  .sidebar-item-active {
+    @apply bg-serbia-red-600 text-white shadow-sm;
+  }
+
+  .sidebar-item-inactive {
+    @apply text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900;
+  }
+
+  .sidebar-item-inactive:hover {
+    @apply translate-x-1;
+  }
+
+  /* Enhanced Chart Container */
+  .chart-container {
+    @apply bg-white rounded-2xl border border-neutral-200 p-6 transition-all-300 hover:shadow-lg;
+  }
+
+  .chart-title {
+    @apply text-lg font-semibold text-neutral-900 mb-4;
+  }
+
+  .chart-header {
+    @apply flex items-center justify-between mb-6 pb-4 border-b border-neutral-200;
+  }
+
+  /* Enhanced Data Table */
+  .data-table {
+    @apply min-w-full divide-y divide-neutral-200;
+  }
+
+  .data-table th {
+    @apply px-6 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider bg-neutral-50;
+    font-weight: var(--font-weight-semibold);
+  }
+
+  .data-table td {
+    @apply px-6 py-4 whitespace-nowrap text-sm text-neutral-900;
+  }
+
+  .data-table-row {
+    @apply transition-colors-200 hover:bg-neutral-50;
+  }
+
+  /* Status Indicators */
+  .status-badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .status-success {
+    @apply status-badge bg-success-100 text-success-800;
+  }
+
+  .status-warning {
+    @apply status-badge bg-warning-100 text-warning-800;
+  }
+
+  .status-error {
+    @apply status-badge bg-error-100 text-error-800;
+  }
+
+  .status-info {
+    @apply status-badge bg-info-100 text-info-800;
+  }
+
+  /* Loading States */
+  .loading-spinner {
+    @apply animate-spin rounded-full border-2 border-neutral-300 border-t-serbia-red-600;
+  }
+
+  /* Enhanced Focus Styles */
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-serbia-red-500 focus:ring-offset-2;
+  }
+
+  /* Serbian Gradients */
+  .bg-gradient-serbia {
+    background: linear-gradient(135deg, var(--color-serbia-red-600) 0%, var(--color-serbia-blue-600) 100%);
+  }
+
+  .bg-gradient-serbia-soft {
+    background: linear-gradient(135deg, var(--color-serbia-red-50) 0%, var(--color-serbia-blue-50) 100%);
+  }
+
+  .text-gradient-serbia {
+    background: linear-gradient(135deg, var(--color-serbia-red-600) 0%, var(--color-serbia-blue-600) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Enhanced Shadows */
+  .shadow-elevation-1 {
+    box-shadow: var(--shadow-sm);
+  }
+
+  .shadow-elevation-2 {
+    box-shadow: var(--shadow-base);
+  }
+
+  .shadow-elevation-3 {
+    box-shadow: var(--shadow-md);
+  }
+
+  .shadow-elevation-4 {
+    box-shadow: var(--shadow-lg);
+  }
+
+  /* Interactive Elements */
+  .interactive {
+    @apply transition-all-300 cursor-pointer hover:scale-105 focus:scale-105;
+  }
+
+  .interactive-press {
+    @apply active:scale-95 transition-transform-150;
+  }
+}
+
+@layer utilities {
+  .text-shadow {
+    text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+
+  .bg-gradient-serbia {
+    background: linear-gradient(135deg, #C6363C 0%, #0C4076 100%);
+  }
+
+  .text-gradient-serbia {
+    background: linear-gradient(135deg, #C6363C 0%, #0C4076 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}

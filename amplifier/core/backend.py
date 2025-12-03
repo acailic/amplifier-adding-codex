@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import subprocess
+import time
 from pathlib import Path
 from typing import Any
 
@@ -378,6 +379,10 @@ class CodexBackend(AmplifierBackend):
             return False
 
     def initialize_session(self, prompt: str, context: str | None = None) -> dict[str, Any]:
+        # Session metadata files are now separated by component to avoid conflicts:
+        # - session_memory_init_metadata.json: Memory loading during session initialization
+        # - session_memory_cleanup_metadata.json: Memory extraction during session finalization
+        # - session_resume_metadata.json: Session resume operations
         try:
             memory_enabled = os.getenv("MEMORY_SYSTEM_ENABLED", "true").lower() in ["true", "1", "yes"]
             if not memory_enabled:
@@ -385,7 +390,7 @@ class CodexBackend(AmplifierBackend):
                 context_file.parent.mkdir(exist_ok=True)
                 context_file.write_text("")
                 metadata = {"memoriesLoaded": 0, "source": "disabled"}
-                metadata_file = Path(".codex/session_init_metadata.json")
+                metadata_file = Path(".codex/session_memory_init_metadata.json")
                 metadata_file.write_text(json.dumps(metadata))
                 return {"success": True, "data": {"context": ""}, "metadata": metadata}
 
@@ -429,7 +434,7 @@ class CodexBackend(AmplifierBackend):
                 "source": "amplifier_memory",
                 "contextFile": str(context_file),
             }
-            metadata_file = Path(".codex/session_init_metadata.json")
+            metadata_file = Path(".codex/session_memory_init_metadata.json")
             metadata_file.write_text(json.dumps(metadata))
 
             return {
@@ -446,7 +451,7 @@ class CodexBackend(AmplifierBackend):
             memory_enabled = os.getenv("MEMORY_SYSTEM_ENABLED", "true").lower() in ["true", "1", "yes"]
             if not memory_enabled:
                 metadata = {"memoriesExtracted": 0, "source": "disabled"}
-                metadata_file = Path(".codex/session_cleanup_metadata.json")
+                metadata_file = Path(".codex/session_memory_cleanup_metadata.json")
                 metadata_file.write_text(json.dumps(metadata))
                 return {"success": True, "data": {}, "metadata": metadata}
 
@@ -482,7 +487,7 @@ class CodexBackend(AmplifierBackend):
                 "transcriptPath": transcript_path,
                 "source": "amplifier_cleanup",
             }
-            metadata_file = Path(".codex/session_cleanup_metadata.json")
+            metadata_file = Path(".codex/session_memory_cleanup_metadata.json")
             metadata_file.write_text(json.dumps(metadata))
 
             return {"success": True, "data": {"transcriptPath": transcript_path}, "metadata": metadata}
@@ -504,7 +509,8 @@ class CodexBackend(AmplifierBackend):
             from ...codex.tools.transcript_exporter import CodexTranscriptExporter
 
             exporter = CodexTranscriptExporter()
-            output_dir = Path(output_dir) if output_dir else Path(".codex/transcripts")
+            output_path = Path(output_dir) if output_dir else Path(".codex/transcripts")
+            output_dir = str(output_path)
             result = exporter.export_codex_transcript(session_id or "unknown", output_dir, format)
             return {
                 "success": result is not None,
@@ -615,21 +621,78 @@ class CodexBackend(AmplifierBackend):
             return {"success": False, "data": {}, "metadata": {"error": str(e)}}
 
     def spawn_agent_with_context(
-        self, agent_name: str, task: str, messages: List[Dict[str, Any]], context: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        self, agent_name: str, task: str, messages: list[dict[str, Any]], context: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Codex delegates to agent backend with full context support."""
+        start_time = time.time()
+        success = False
+        result_summary = None
+        context_tokens = None
+        error_message = None
+
         try:
             from amplifier.core.agent_backend import get_agent_backend
 
             agent_backend = get_agent_backend()
-            # Codex agent backend has spawn_agent_with_context method
-            if hasattr(agent_backend, "spawn_agent_with_context"):
-                return agent_backend.spawn_agent_with_context(agent_name, task, messages, context)
-            # Fallback to regular spawn
-            return agent_backend.spawn_agent(agent_name, task, context)
+            # Use spawn_agent method (all backends support this)
+            result = agent_backend.spawn_agent(agent_name, task, context)
+
+            # Determine success and extract summary
+            success = result.get("success", False)
+            if success:
+                result_summary = result.get("result", "")[:200]  # Truncate for summary
+            else:
+                error_message = result.get("error", "Unknown error")
+
+            # Estimate context tokens using AgentContextBridge heuristic
+            if messages:
+                total_chars = sum(len(str(msg.get("content", ""))) for msg in messages)
+                context_tokens = total_chars // 4  # 4 chars per token heuristic
+
+            return result
+
         except Exception as e:
             logger.error(f"Codex spawn_agent_with_context error: {e}")
+            error_message = str(e)
             return {"success": False, "result": "", "metadata": {"error": str(e)}}
+        finally:
+            # Log analytics (don't let logging failures break the main flow)
+            try:
+                duration_seconds = time.time() - start_time
+
+                # Use MCP client to log analytics
+                import sys
+
+                codex_tools_path = Path(__file__).parent.parent.parent / ".codex" / "tools"
+                sys.path.insert(0, str(codex_tools_path))
+
+                try:
+                    from codex_mcp_client import CodexMCPClient
+
+                    client = CodexMCPClient(profile=os.getenv("CODEX_PROFILE", "development"))
+                    analytics_result = client.call_tool(
+                        "amplifier_agent_analytics",
+                        "log_agent_execution",
+                        agent_name=agent_name,
+                        task=task,
+                        duration_seconds=duration_seconds,
+                        success=success,
+                        result_summary=result_summary,
+                        context_tokens=context_tokens,
+                        error_message=error_message,
+                    )
+
+                    if not analytics_result.get("success", False):
+                        logger.warning(
+                            f"Failed to log agent analytics: {analytics_result.get('metadata', {}).get('error', 'Unknown error')}"
+                        )
+
+                finally:
+                    if str(codex_tools_path) in sys.path:
+                        sys.path.remove(str(codex_tools_path))
+
+            except Exception as log_error:
+                logger.warning(f"Agent analytics logging failed: {log_error}")
 
     def get_capabilities(self) -> dict[str, Any]:
         return {"task_management": True, "web_search": True, "url_fetch": True, "mcp_tools": True}

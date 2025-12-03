@@ -9,13 +9,7 @@
     ],
     "deny": [],
     "defaultMode": "bypassPermissions",
-    "additionalDirectories": [
-      ".data",
-      ".vscode",
-      ".claude",
-      ".ai",
-      "~/amplifier"
-    ]
+    "additionalDirectories": [".data", ".vscode", ".claude", ".ai", "."]
   },
   "enableAllProjectMcpServers": false,
   "enabledMcpjsonServers": ["playwright", "deepwiki"],
