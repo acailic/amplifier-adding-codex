@@ -140,7 +140,7 @@ jobs:
       - name: Build Application
         run: |
           echo "🏗️ Building application..."
-          npm run build
+          npm run build:static
         working-directory: ${{ env.WORKING_DIRECTORY }}
 
       - name: Bundle Size Analysis
@@ -185,15 +185,20 @@ jobs:
           # Install Lighthouse CI
           npm install -g @lhci/cli@0.12.x
 
-          # Start production server
-          npm run start &
+          # Install serve if not present
+          if ! npm list serve >/dev/null 2>&1; then
+            npm install --save-dev serve
+          fi
+
+          # Serve static site
+          npm run serve:static &
           SERVER_PID=$!
 
           # Wait for server to start
-          echo "Waiting for server to start..."
+          echo "Waiting for static server to start..."
           for i in {1..30}; do
             if curl -s http://localhost:3000 > /dev/null; then
-              echo "Server is ready!"
+              echo "Static server is ready!"
               break
             fi
             sleep 2
@@ -280,12 +285,12 @@ jobs:
             const browser = await chromium.launch();
             const page = await browser.newPage();
 
-            // Start the app
+            // Serve static app
             const { spawn } = require('child_process');
-            const server = spawn('npm', ['run', 'start'], { stdio: 'pipe' });
+            const server = spawn('npm', ['run', 'serve:static'], { stdio: 'pipe' });
 
-            // Wait for server
-            await new Promise(resolve => setTimeout(resolve, 15000));
+            // Wait for static server
+            await new Promise(resolve => setTimeout(resolve, 5000));
 
             try {
               await page.goto('http://localhost:3000', { waitUntil: 'networkidle' });
@@ -496,7 +501,7 @@ jobs:
           sleep 30
 
           # Test health endpoint
-          HEALTH_CHECK=$(curl -s -o /dev/null -w "%{http_code}" https://vizualni-admin-staging.vercel.app/api/health)
+          HEALTH_CHECK=$(curl -s -o /dev/null -w "%{http_code}" https://vizualni-admin-staging.vercel.app/health.json)
           if [ "$HEALTH_CHECK" != "200" ]; then
             echo "❌ Health check failed with status $HEALTH_CHECK"
             exit 1
@@ -583,7 +588,7 @@ jobs:
 
           # Health checks
           for i in {1..5}; do
-            HEALTH_CHECK=$(curl -s -o /dev/null -w "%{http_code}" https://vizualni-admin.vercel.app/api/health)
+            HEALTH_CHECK=$(curl -s -o /dev/null -w "%{http_code}" https://vizualni-admin.vercel.app/health.json)
             if [ "$HEALTH_CHECK" == "200" ]; then
               echo "✅ Health check passed on attempt $i"
               break
@@ -600,7 +605,7 @@ jobs:
           echo "🧪 Running production smoke tests..."
 
           # Test critical functionality
-          curl -f https://vizualni-admin.vercel.app/api/health || exit 1
+          curl -f https://vizualni-admin.vercel.app/health.json || exit 1
 
           echo "✅ Production smoke tests passed"
 
