@@ -1,6 +1,7 @@
 {
   "navigation": {
     "dashboard": "Kontrolna tabla",
+    "datasets": "Skupovi podataka",
     "budget": "Budžet",
     "demographics": "Demografija",
     "airQuality": "Kvalitet vazduha",

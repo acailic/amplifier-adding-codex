@@ -8,6 +8,7 @@ import {
   Users,
   Wind,
   Zap,
+  Database,
   Settings,
   LogOut,
   Menu,
@@ -24,6 +25,11 @@ const navigation = [
     name: 'dashboard',
     href: '/dashboard',
     icon: LayoutDashboard,
+  },
+  {
+    name: 'datasets',
+    href: '/datasets',
+    icon: Database,
   },
   {
     name: 'budget',

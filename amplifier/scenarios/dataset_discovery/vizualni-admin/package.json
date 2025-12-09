@@ -3,12 +3,17 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "setup": "node scripts/setup-dev.js",
+    "verify": "node scripts/verify-demos.js",
     "dev": "next dev",
     "build": "next build",
-    "build:static": "next build",
+    "build:optimized": "next build",
+    "build:static": "EXPORT_MODE=static next build",
+    "build:analyze": "ANALYZE=true next build",
     "start": "next start",
     "serve:static": "npx serve out -l 3000",
     "lint": "next lint",
+    "lint:fix": "next lint --fix",
     "type-check": "tsc --noEmit",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -19,7 +24,10 @@
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
     "test:visual": "playwright test --project=chromium",
-    "test:accessibility": "jest --testPathPattern=accessibility"
+    "test:accessibility": "jest --testPathPattern=accessibility",
+    "clean": "rm -rf .next out node_modules/.cache",
+    "postbuild": "echo 'Build completed successfully!'",
+    "prebuild": "npm run type-check"
   },
   "dependencies": {
     "@headlessui/react": "^1.7.17",

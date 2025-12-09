@@ -6,8 +6,7 @@ export default function Document() {
       <Head>
         <meta name="description" content="Vizuelni Admin Panel - Analiza i vizuelizacija srpskih podataka" />
         <link rel="icon" href="/favicon.ico" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-      </Head>
+        </Head>
       <body>
         <Main />
         <NextScript />
