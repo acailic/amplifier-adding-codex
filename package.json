@@ -1,10 +1,19 @@
 {
-  "name": "vizualni-admin",
-  "version": "1.0.0",
-  "private": true,
+  "name": "@acailic/vizualni-admin",
+  "version": "1.2.0",
+  "description": "Serbian data visualization admin dashboard components with price analytics",
+  "main": "dist/index.js",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
+    "build": "rollup -c",
+    "build:watch": "rollup -c -w",
     "dev": "next dev",
-    "build": "next build",
     "build:analyze": "cross-env ANALYZE=true next build",
     "build:github": "cross-env GITHUB_PAGES=true next build",
     "start": "next start",
@@ -12,58 +21,87 @@
     "lint:fix": "next lint --fix",
     "type-check": "tsc --noEmit",
     "perf:lighthouse": "lighthouse http://localhost:3000 --output=json --output-path=./lighthouse-report.json",
-    "perf:build": "npm run build && npm run perf:lighthouse"
+    "perf:build": "npm run build && npm run perf:lighthouse",
+    "prepublishOnly": "npm run build && npm run type-check"
+  },
+  "keywords": [
+    "react",
+    "typescript",
+    "dashboard",
+    "visualization",
+    "charts",
+    "serbia",
+    "price",
+    "analytics",
+    "admin",
+    "recharts",
+    "data-visualization"
+  ],
+  "author": "Aleksandar Ilic <aleksandar.ilic.dev@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/acailic/improvements-ampl.git",
+    "directory": "packages/vizualni-admin"
+  },
+  "homepage": "https://github.com/acailic/improvements-ampl#readme",
+  "bugs": {
+    "url": "https://github.com/acailic/improvements-ampl/issues"
+  },
+  "peerDependencies": {
+    "react": ">=16.8.0",
+    "react-dom": ">=16.8.0"
   },
   "dependencies": {
     "@headlessui/react": "^1.7.17",
     "@tailwindcss/forms": "^0.5.7",
-    "@types/node": "^20.10.5",
-    "@types/react": "^18.2.45",
-    "@types/react-dom": "^18.2.18",
-    "autoprefixer": "^10.4.16",
-    "axios": "^1.6.2",
     "clsx": "^2.0.0",
     "date-fns": "^3.0.6",
     "framer-motion": "^12.23.25",
     "lucide-react": "^0.303.0",
-    "next": "^14.2.33",
-    "next-i18next": "^15.2.0",
-    "next-seo": "^7.0.1",
-    "postcss": "^8.4.32",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "recharts": "^2.8.0",
-    "tailwindcss": "^3.4.0",
-    "typescript": "^5.3.3",
-    "web-vitals": "^5.1.0"
+    "recharts": "^2.8.0"
   },
   "devDependencies": {
     "@next/bundle-analyzer": "^16.0.7",
     "@playwright/test": "^1.57.0",
+    "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-typescript": "^11.1.5",
     "@storybook/addon-essentials": "^8.6.14",
     "@storybook/addon-interactions": "^8.6.14",
     "@storybook/react": "^10.1.4",
     "@storybook/react-vite": "^10.1.4",
-    "@types/react-query": "^1.2.8",
+    "@types/node": "^20.10.5",
+    "@types/react": "^18.2.45",
+    "@types/react-dom": "^18.2.18",
     "@typescript-eslint/eslint-plugin": "^6.15.0",
     "@typescript-eslint/parser": "^6.15.0",
+    "autoprefixer": "^10.4.16",
     "axe-playwright": "^2.2.2",
     "compression-webpack-plugin": "^11.1.0",
     "cross-env": "^10.1.0",
     "eslint": "^8.56.0",
     "eslint-config-next": "14.0.4",
     "jest-axe": "^10.0.0",
+    "next": "^14.2.33",
+    "next-i18next": "^15.2.0",
+    "next-seo": "^7.0.1",
+    "postcss": "^8.4.32",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
     "react-query": "^3.39.3",
+    "rollup": "^4.9.1",
+    "rollup-plugin-dts": "^6.1.0",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5.3.3",
     "webpack-bundle-analyzer": "^5.0.1"
   },
-  "keywords": [
-    "serbia",
-    "visualization",
-    "dashboard",
-    "admin"
-  ],
-  "author": "",
-  "license": "MIT",
-  "description": "Serbian data visualization admin dashboard",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
   "packageManager": "pnpm@10.18.3+sha512.bbd16e6d7286fd7e01f6b3c0b3c932cda2965c06a908328f74663f10a9aea51f1129eea615134bf992831b009eabe167ecb7008b597f40ff9bc75946aadfb08d"
 }

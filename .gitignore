@@ -311,3 +311,4 @@ temp-*.js
 dev-utils/
 scripts/temp/
 scripts/tmp/
+*.csv

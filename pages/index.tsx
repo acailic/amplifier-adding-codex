@@ -1,6 +1,9 @@
 import React from 'react';
 import Head from 'next/head';
+import Link from 'next/link';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { motion } from 'framer-motion';
+import { ArrowRight, TrendingUp, DollarSign, BarChart3 } from 'lucide-react';
 
 // Sample data for Serbian regions
 const budgetData = [
@@ -80,6 +83,66 @@ export default function Home() {
             </section>
           </div>
 
+          {/* Quick Links Section */}
+          <section className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <Link href="/cene">
+              <motion.div
+                whileHover={{ scale: 1.02, y: -2 }}
+                whileTap={{ scale: 0.98 }}
+                className="bg-white rounded-lg shadow-lg p-6 cursor-pointer border border-gray-200 hover:border-blue-300 hover:shadow-xl transition-all duration-200"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                    <DollarSign className="w-6 h-6 text-green-600" />
+                  </div>
+                  <ArrowRight className="w-5 h-5 text-gray-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Analiza Cena</h3>
+                <p className="text-gray-600 text-sm">
+                  Kompletna vizualizacija i analiza cena proizvoda, trendova i popusta
+                </p>
+              </motion.div>
+            </Link>
+
+            <Link href="/budget">
+              <motion.div
+                whileHover={{ scale: 1.02, y: -2 }}
+                whileTap={{ scale: 0.98 }}
+                className="bg-white rounded-lg shadow-lg p-6 cursor-pointer border border-gray-200 hover:border-blue-300 hover:shadow-xl transition-all duration-200"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <BarChart3 className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <ArrowRight className="w-5 h-5 text-gray-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Budžet</h3>
+                <p className="text-gray-600 text-sm">
+                  Budžetske alokacije i potrošnja po regijama Srbije
+                </p>
+              </motion.div>
+            </Link>
+
+            <Link href="/air-quality">
+              <motion.div
+                whileHover={{ scale: 1.02, y: -2 }}
+                whileTap={{ scale: 0.98 }}
+                className="bg-white rounded-lg shadow-lg p-6 cursor-pointer border border-gray-200 hover:border-blue-300 hover:shadow-xl transition-all duration-200"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                    <TrendingUp className="w-6 h-6 text-orange-600" />
+                  </div>
+                  <ArrowRight className="w-5 h-5 text-gray-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Kvalitet Vazduha</h3>
+                <p className="text-gray-600 text-sm">
+                  Praćenje kvaliteta vazduha i PM čestica u realnom vremenu
+                </p>
+              </motion.div>
+            </Link>
+          </section>
+
           {/* Info Section */}
           <section className="mt-8 bg-white rounded-lg shadow-lg p-6">
             <h2 className="text-2xl font-semibold text-gray-900 mb-4">
@@ -87,12 +150,13 @@ export default function Home() {
             </h2>
             <div className="prose max-w-none text-gray-600">
               <p>
-                Ovaj dashboard prikazuje vizualizacije podataka za Republiku Srbiju.
+                Vizualni Admin dashboard pruža sveobuhvatnu vizualizaciju podataka za Republiku Srbiju.
                 Trenutno prikazujemo:
               </p>
               <ul className="list-disc pl-6 mt-4">
                 <li>Budžetske alokacije po regijama</li>
                 <li>Kvalitet vazduha u realnom vremenu</li>
+                <li>Analizu cena proizvoda i trendova</li>
                 <li>Demografske podatke</li>
                 <li>Potrošnju energije</li>
               </ul>
