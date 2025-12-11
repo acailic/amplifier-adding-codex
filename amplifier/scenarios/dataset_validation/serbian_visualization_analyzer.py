@@ -228,7 +228,7 @@ class SerbianVisualizationAnalyzer:
 
             # Check geographic coverage
             location_values = [record.get(location_field) for record in records[:100]]
-            unique_locations = len(set(str(v) for v in location_values if v))
+            unique_locations = len({str(v) for v in location_values if v})
 
             if unique_locations >= 10:
                 score += 0.2
@@ -293,7 +293,7 @@ class SerbianVisualizationAnalyzer:
                 "struktura",
             ]
             hierarchy_field_count = sum(
-                1 for field in hierarchical_fields if any(field in key.lower() for key in sample_record.keys())
+                1 for field in hierarchical_fields if any(field in key.lower() for key in sample_record)
             )
 
             if hierarchy_field_count >= 1:

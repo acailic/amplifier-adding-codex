@@ -165,7 +165,7 @@ class SerbianStreamingDatasetScanner:
                 for field in reader.fieldnames:
                     stats[field] = ColumnStats(name=field)
 
-            for row_index, row in enumerate(reader):
+            for _row_index, row in enumerate(reader):
                 rows += 1
                 chunks += 1
 
@@ -224,7 +224,7 @@ class SerbianStreamingDatasetScanner:
 
                 if first_char == "{":
                     # NDJSON format - one JSON object per line
-                    for line_num, line in enumerate(f):
+                    for _line_num, line in enumerate(f):
                         try:
                             record = json.loads(line.strip())
                             if not isinstance(record, dict):
@@ -238,7 +238,7 @@ class SerbianStreamingDatasetScanner:
 
                             # Initialize columns if first record
                             if rows == 1:
-                                for key in record.keys():
+                                for key in record:
                                     stats[key] = ColumnStats(name=key)
 
                             # Process record
@@ -275,7 +275,7 @@ class SerbianStreamingDatasetScanner:
                     else:
                         records = []
 
-                    for record_num, record in enumerate(records):
+                    for _record_num, record in enumerate(records):
                         if not isinstance(record, dict):
                             continue
 
@@ -287,7 +287,7 @@ class SerbianStreamingDatasetScanner:
 
                         # Initialize columns if first record
                         if rows == 1:
-                            for key in record.keys():
+                            for key in record:
                                 stats[key] = ColumnStats(name=key)
 
                         # Process record

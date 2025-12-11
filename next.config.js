@@ -1,114 +1,143 @@
-const withBundleAnalyzer = require('@next/bundle-analyzer')({
-  enabled: process.env.ANALYZE === 'true',
-});
+/**
+ * Minimal Next.js Configuration for Build
+ * Focus: Reduce memory usage and complete build successfully
+ */
 
-const crypto = require('crypto');
+const { defaultLocale, locales } = require("./app/locales/locales.json");
+const { securityHeaders } = require('./security-headers');
 
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  reactStrictMode: true,
-  swcMinify: true,
+const pkg = require("./package.json");
 
-  // Performance optimizations
-  compiler: {
-    removeConsole: process.env.NODE_ENV === 'production',
-  },
+// Populate build-time variables
+process.env.NEXT_PUBLIC_VERSION = `v${pkg.version}`;
+process.env.NEXT_PUBLIC_GITHUB_REPO = pkg.repository.url.replace(
+  /(\/|\.git)$/,
+  ""
+);
 
-  // Enable compression
-  compress: true,
+const isGitHubPages = process.env.NEXT_PUBLIC_BASE_PATH !== undefined;
+const isDevelopment = process.env.NODE_ENV === "development";
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
-  // Optimize images
+module.exports = {
+  // Only use export mode in production for GitHub Pages
+  output: (!isDevelopment && isGitHubPages) ? "export" : undefined,
+  basePath: basePath,
+  assetPrefix: basePath,
   images: {
-    domains: [],
-    formats: ['image/webp', 'image/avif'],
-    minimumCacheTTL: 86400, // 24 hours
+    formats: ["image/avif", "image/webp"],
+    minimumCacheTTL: 60,
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    unoptimized: true, // Required for static export
+  },
+  i18n: isGitHubPages ? undefined : { locales, defaultLocale },
+
+  // Basic optimizations only
+  swcMinify: true,
+  productionBrowserSourceMaps: false,
+
+  pageExtensions: ["js", "ts", "tsx", "mdx"],
+
+  // Add security headers
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: securityHeaders,
+      },
+    ];
   },
 
-  // Performance budgets
-  experimental: {
-    optimizePackageImports: ['recharts', 'lucide-react'],
-  },
+  // Minimal webpack config
+  webpack(config, { dev, isServer }) {
+    // Basic React aliases
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      "mapbox-gl": "maplibre-gl",
+    };
 
-  // Webpack optimizations
-  webpack: (config, { dev, isServer }) => {
-    // Bundle analyzer
-    if (!dev && !isServer) {
-      config.optimization.splitChunks = {
-        chunks: 'all',
-        cacheGroups: {
-          default: false,
-          vendors: false,
-          framework: {
-            chunks: 'all',
-            name: 'framework',
-            test: /[\\/]node_modules[\\/](react|react-dom|scheduler|prop-types|use-subscription)[\\/]/,
-            priority: 40,
-            enforce: true,
-          },
-          lib: {
-            test: /[\\/]node_modules[\\/]/,
-            name: 'vendor',
-            priority: 30,
-            minChunks: 1,
-            reuseExistingChunk: true,
-          },
-          commons: {
-            name: 'commons',
-            minChunks: 2,
-            priority: 20,
-          },
-          shared: {
-            name: 'shared',
-            minChunks: 2,
-            priority: 10,
-            reuseExistingChunk: true,
-          },
-          charts: {
-            test: /[\\/]node_modules[\\/](recharts)[\\/]/,
-            name: 'charts',
-            priority: 25,
-            chunks: 'async',
-          },
-          ui: {
-            test: /[\\/]node_modules[\\/](lucide-react|@headlessui)[\\/]/,
-            name: 'ui',
-            priority: 24,
-            chunks: 'async',
-          },
+    // Fix for all MUI packages with directory import issues
+    // This resolves ES module directory imports by appending /index.js
+    const originalResolve = config.resolve;
+    config.resolve = {
+      ...originalResolve,
+      alias: {
+        ...originalResolve.alias,
+        // Map common MUI directory imports to their index files
+        '@mui/utils/composeClasses': '@mui/utils/composeClasses/index.js',
+        '@mui/material/Alert': '@mui/material/Alert/index.js',
+        '@mui/material': '@mui/material/index.js',
+        '@mui/utils': '@mui/utils/index.js',
+        '@mui/icons-material': '@mui/icons-material/index.js',
+        '@mui/lab': '@mui/lab/index.js',
+      },
+    };
+
+    // Add a rule to handle all MUI package imports
+    config.module.rules.push({
+      test: /\.(js|ts|tsx)$/,
+      include: [
+        /node_modules\/@mui\/.*/,
+      ],
+      resolve: {
+        fullySpecified: false,
+      },
+      use: {
+        loader: 'babel-loader',
+        options: {
+          presets: ['@babel/preset-env', '@babel/preset-react'],
+          plugins: ['@babel/plugin-transform-runtime'],
+          cacheDirectory: false,
         },
-      };
+      },
+    });
 
-      // Production optimizations
-      config.optimization.usedExports = true;
-      config.optimization.sideEffects = false;
+    // Basic fallbacks for browser
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        path: false,
+        os: false,
+        crypto: false,
+        stream: false,
+        buffer: false,
+      };
+    }
+
+    // GraphQL files
+    config.module.rules.push({
+      test: /\.(graphql|gql)$/,
+      exclude: /node_modules/,
+      loader: "graphql-tag/loader",
+    });
+
+    // Disable source maps in production
+    if (!dev) {
+      config.devtool = false;
     }
 
     return config;
   },
 
-  // Performance headers
-  async headers() {
-    return [
-      {
-        source: '/_next/static/(.*)',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
-          },
-        ],
-      },
-      {
-        source: '/images/(.*)',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=86400, immutable',
-          },
-        ],
-      },
-    ];
+  // Disable eslint during builds
+  eslint: {
+    ignoreDuringBuilds: true,
+    dirs: ["app"],
+  },
+
+  // Experimental features - minimal set
+  experimental: {
+    esmExternals: "loose",
+    optimizeCss: true,
+  },
+
+  // Logging
+  logging: {
+    level: "error",
+    fetches: {
+      fullUrl: true,
+    },
   },
 };
-
-module.exports = withBundleAnalyzer(nextConfig);

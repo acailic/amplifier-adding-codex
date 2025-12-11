@@ -11,7 +11,9 @@
     "lint:fix": "next lint --fix",
     "type-check": "tsc --noEmit",
     "perf:lighthouse": "lighthouse http://localhost:3000 --output=json --output-path=./lighthouse-report.json",
-    "perf:build": "npm run build && npm run perf:lighthouse"
+    "perf:build": "npm run build && npm run perf:lighthouse",
+    "security:check": "./scripts/security-check.sh",
+    "security:audit": "yarn audit --level=moderate"
   },
   "dependencies": {
     "@headlessui/react": "^1.7.17",

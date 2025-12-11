@@ -6,7 +6,6 @@ import json
 from pathlib import Path
 
 import pytest
-
 from scenarios.youtube_synthesizer.analysis_engine import AnalysisEngine
 from scenarios.youtube_synthesizer.analysis_engine import AnalysisSettings
 from scenarios.youtube_synthesizer.state import TranscriptMetadata

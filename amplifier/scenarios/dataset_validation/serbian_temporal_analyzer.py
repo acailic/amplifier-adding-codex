@@ -307,10 +307,7 @@ class SerbianTemporalAnalyzer:
             return False
 
         # Holidays
-        if self.is_serbian_holiday(date):
-            return False
-
-        return True
+        return not self.is_serbian_holiday(date)
 
     def calculate_business_day_coverage(self, dates: list[datetime]) -> float:
         """Calculate coverage of Serbian business days."""
@@ -338,7 +335,7 @@ class SerbianTemporalAnalyzer:
         if not dates:
             return 0.0
 
-        unique_dates = set(date.date() for date in dates)
+        unique_dates = {date.date() for date in dates}
         total_unique = len(unique_dates)
 
         if total_unique <= 1:
@@ -469,7 +466,6 @@ class SerbianTemporalAnalyzer:
         base_result = analyze_temporal_coverage(column_stats, row_count)
 
         # Collect all dates for Serbian-specific analysis
-        all_dates = []
         for stats in column_stats.values():
             if stats.date_values > 0 and stats.date_min and stats.date_max:
                 # We don't have individual dates in ColumnStats, so we'll use sample_dates

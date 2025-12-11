@@ -35,6 +35,7 @@ CATEGORY_KEYWORDS = {
         "pm2.5",
         "vazduh",
         "emisija",
+        "kvalitet-vazdukha",
     ],
     "demographics": [
         "stanovništvo",

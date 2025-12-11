@@ -13,7 +13,7 @@ def _first_numeric_column(records: list[Mapping[str, object]]) -> tuple[str | No
     if not records:
         return None, []
     sample = records[0]
-    for key, value in sample.items():
+    for key, _value in sample.items():
         try:
             numeric_values = [float(row[key]) for row in records if row.get(key) is not None]
             if numeric_values:

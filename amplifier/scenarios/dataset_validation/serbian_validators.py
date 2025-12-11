@@ -340,7 +340,7 @@ class SerbianDataValidator:
             # Extract components
             day = int(jmbg[0:2])
             month = int(jmbg[2:4])
-            year = int(jmbg[4:7])
+            int(jmbg[4:7])
 
             # Basic date validation
             if month < 1 or month > 12:

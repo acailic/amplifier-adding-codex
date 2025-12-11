@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from langchain_core.messages import HumanMessage
 from langchain_core.messages import SystemMessage
-
 from scenarios.edge_coach import backends
 
 

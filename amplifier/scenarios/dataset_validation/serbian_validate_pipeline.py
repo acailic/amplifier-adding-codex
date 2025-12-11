@@ -248,12 +248,11 @@ class SerbianPipelineManager:
                             serbian_issues.append(f"{column_name}: Invalid PIB format")
 
                 # Municipality validation
-                elif "opstina" in col_lower or "municipality" in col_lower:
-                    if isinstance(value, str):
-                        from amplifier.scenarios.dataset_validation.serbian_validators import is_serbian_municipality
+                elif ("opstina" in col_lower or "municipality" in col_lower) and isinstance(value, str):
+                    from amplifier.scenarios.dataset_validation.serbian_validators import is_serbian_municipality
 
-                        if not is_serbian_municipality(value.strip()):
-                            serbian_issues.append(f"{column_name}: Invalid Serbian municipality")
+                    if not is_serbian_municipality(value.strip()):
+                        serbian_issues.append(f"{column_name}: Invalid Serbian municipality")
 
         # Merge Serbian issues with basic validation issues
         result.type_issues.extend(serbian_issues)
@@ -286,7 +285,7 @@ class SerbianPipelineManager:
     ) -> dict[str, Any]:
         """Run comprehensive Serbian government dataset validation."""
         resolved_format = detect_format(input_path, dataset_format)
-        date_hints = set(date_columns) if date_columns else None
+        set(date_columns) if date_columns else None
 
         # Load records and get dataset profile
         records, profile, processing_stats = self.load_records_streaming(
