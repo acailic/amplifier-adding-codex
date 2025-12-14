@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dataset API Frontend Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .test-section {
+            background: white;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        input[type="file"] {
+            margin: 10px 0;
+        }
+        .results {
+            background-color: #f8f9fa;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .dataset-card {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            background-color: white;
+        }
+        .dataset-title {
+            font-weight: bold;
+            color: #495057;
+            margin-bottom: 5px;
+        }
+        .dataset-meta {
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+        .insights-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .insight-card {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 4px;
+            border-left: 4px solid #007bff;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Dataset API Frontend Integration Test</h1>
+
+    <div class="test-section">
+        <h2>1. API Health Check</h2>
+        <button onclick="testHealth()">Test API Health</button>
+        <div id="health-status" class="status info">Click to test API connection</div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. Dataset Search</h2>
+        <input type="text" id="search-input" placeholder="Unesite termin za pretragu..." value="population">
+        <button onclick="searchDatasets()">Pretraži</button>
+        <button onclick="loadCategories()">Učitaj kategorije</button>
+        <div id="search-status" class="status info">Unesite termin i kliknite na pretragu</div>
+        <div id="search-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Dataset Insights Generation</h2>
+        <input type="file" id="csv-file" accept=".csv">
+        <button onclick="generateInsights()" id="insights-btn" disabled>Generiši uvide</button>
+        <div id="insights-status" class="status info">Odaberite CSV datoteku</div>
+        <div id="insights-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>4. Test with Sample Data</h2>
+        <button onclick="testWithSampleData()">Testiraj sa primer podacima</button>
+        <div id="sample-status" class="status info">Kliknite da testirate sa automatski generisanim podacima</div>
+    </div>
+
+    <div class="test-section">
+        <h2>5. API Statistics</h2>
+        <button onclick="loadStats()">Učitaj statistike</button>
+        <div id="stats-results"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+
+        // Enable/disable insights button based on file selection
+        document.getElementById('csv-file').addEventListener('change', function(e) {
+            const btn = document.getElementById('insights-btn');
+            const status = document.getElementById('insights-status');
+            if (e.target.files.length > 0) {
+                btn.disabled = false;
+                status.className = 'status info';
+                status.textContent = `Odabrana datoteka: ${e.target.files[0].name}`;
+            } else {
+                btn.disabled = true;
+                status.className = 'status info';
+                status.textContent = 'Odaberite CSV datoteku';
+            }
+        });
+
+        // Health check
+        async function testHealth() {
+            const status = document.getElementById('health-status');
+            status.className = 'status info';
+            status.innerHTML = '<div class="loading"></div> Testing API health...';
+
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    status.className = 'status success';
+                    status.innerHTML = `✅ API je zdrav! Status: ${data.status}<br>Vreme: ${data.timestamp}`;
+                } else {
+                    throw new Error(`Status: ${response.status}`);
+                }
+            } catch (error) {
+                status.className = 'status error';
+                status.innerHTML = `❌ API nije dostupan: ${error.message}<br>Da li je server pokrenut na http://localhost:8000?`;
+            }
+        }
+
+        // Search datasets
+        async function searchDatasets() {
+            const query = document.getElementById('search-input').value;
+            const status = document.getElementById('search-status');
+            const results = document.getElementById('search-results');
+
+            status.className = 'status info';
+            status.innerHTML = '<div class="loading"></div> Pretraživanje...';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/datasets/search?q=${encodeURIComponent(query)}&limit=10`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    status.className = 'status success';
+                    status.innerHTML = `✅ Pronađeno ${data.total} skupova podataka`;
+
+                    if (data.datasets.length > 0) {
+                        results.innerHTML = '<h3>Rezultati:</h3>';
+                        data.datasets.forEach(dataset => {
+                            const card = document.createElement('div');
+                            card.className = 'dataset-card';
+                            card.innerHTML = `
+                                <div class="dataset-title">${dataset.title}</div>
+                                <div class="dataset-meta">
+                                    ${dataset.description}<br>
+                                    <strong>Kategorija:</strong> ${dataset.category}<br>
+                                    <strong>Veličina:</strong> ${dataset.size.toLocaleString()} redova<br>
+                                    <strong>Format:</strong> ${dataset.format}<br>
+                                    <strong>Popularnost:</strong> ${dataset.popularity}%
+                                </div>
+                            `;
+                            results.appendChild(card);
+                        });
+                    } else {
+                        results.innerHTML = '<p>Nema rezultata za traženi termin.</p>';
+                    }
+                } else {
+                    throw new Error(`Greška ${response.status}`);
+                }
+            } catch (error) {
+                status.className = 'status error';
+                status.innerHTML = `❌ Greška pri pretrazi: ${error.message}`;
+            }
+        }
+
+        // Load categories
+        async function loadCategories() {
+            const status = document.getElementById('search-status');
+            status.className = 'status info';
+            status.innerHTML = '<div class="loading"></div> Učitavanje kategorija...';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/datasets/categories`);
+                const categories = await response.json();
+
+                if (response.ok) {
+                    status.className = 'status success';
+                    status.innerHTML = `✅ Učitano ${categories.length} kategorija: ${categories.join(', ')}`;
+                } else {
+                    throw new Error(`Greška ${response.status}`);
+                }
+            } catch (error) {
+                status.className = 'status error';
+                status.innerHTML = `❌ Greška pri učitavanju: ${error.message}`;
+            }
+        }
+
+        // Generate insights from CSV
+        async function generateInsights() {
+            const fileInput = document.getElementById('csv-file');
+            const status = document.getElementById('insights-status');
+            const results = document.getElementById('insights-results');
+
+            if (fileInput.files.length === 0) {
+                status.className = 'status error';
+                status.textContent = 'Molimo odaberite CSV datoteku';
+                return;
+            }
+
+            status.className = 'status info';
+            status.innerHTML = '<div class="loading"></div> Generisanje uvida...';
+
+            try {
+                // Read file as base64
+                const file = fileInput.files[0];
+                const base64 = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        const result = reader.result.split(',')[1];
+                        resolve(result);
+                    };
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+
+                // Send to API
+                const response = await fetch(`${API_BASE}/api/v1/datasets/insights`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        csv_data: base64,
+                        filename: file.name,
+                        language: 'sr'
+                    })
+                });
+
+                const insights = await response.json();
+
+                if (response.ok) {
+                    status.className = 'status success';
+                    status.innerHTML = `✅ Generisani uvidi za ${insights.total_rows} redova i ${insights.total_columns} kolona`;
+
+                    // Display insights
+                    displayInsights(insights, results);
+                } else {
+                    throw new Error(insights.detail || `Greška ${response.status}`);
+                }
+            } catch (error) {
+                status.className = 'status error';
+                status.innerHTML = `❌ Greška pri generisanju uvida: ${error.message}`;
+            }
+        }
+
+        // Display insights
+        function displayInsights(insights, container) {
+            container.innerHTML = '<h3>📊 Uvidi iz podataka:</h3>';
+
+            // Basic info
+            const basicInfo = document.createElement('div');
+            basicInfo.className = 'insight-card';
+            basicInfo.innerHTML = `
+                <strong>Osnovne informacije</strong><br>
+                Redova: ${insights.total_rows}<br>
+                Kolona: ${insights.total_columns}<br>
+                Memorija: ${insights.memory_usage_mb} MB
+            `;
+            container.appendChild(basicInfo);
+
+            // Columns
+            const columnsDiv = document.createElement('div');
+            columnsDiv.innerHTML = '<h4>Kolone:</h4>';
+            const columnsGrid = document.createElement('div');
+            columnsGrid.className = 'insights-grid';
+
+            insights.columns.forEach(col => {
+                const colCard = document.createElement('div');
+                colCard.className = 'insight-card';
+                let html = `<strong>${col.naziv}</strong> (${col.tip})<br>`;
+                html += `Vrednosti: ${col.broj_vrednosti}<br>`;
+                html += `Jedinstvenih: ${col.jedinstvene_vrednosti}<br>`;
+                if (col.nedostajuce_vrednosti > 0) {
+                    html += `Nedostajuće: ${col.nedostajuce_vrednosti}<br>`;
+                }
+                if (col.primeri_vrednosti) {
+                    html += `<br>Primeri: ${col.primeri_vrednosti.slice(0, 3).join(', ')}`;
+                }
+                colCard.innerHTML = html;
+                columnsGrid.appendChild(colCard);
+            });
+
+            columnsDiv.appendChild(columnsGrid);
+            container.appendChild(columnsDiv);
+
+            // Statistics
+            if (insights.statistike) {
+                const statsDiv = document.createElement('div');
+                statsDiv.innerHTML = '<h4>Statistike:</h4>';
+                const statsCard = document.createElement('div');
+                statsCard.className = 'insight-card';
+
+                let statsHtml = '';
+                if (insights.statistike.numericke_kolone) {
+                    statsHtml += `<strong>Numeričke kolone:</strong> ${insights.statistike.numericke_kolone.join(', ')}<br>`;
+                }
+                if (insights.statistike.kategoricke_kolone) {
+                    statsHtml += `<strong>Kategoričke kolone:</strong> ${insights.statistike.kategoricke_kolone.join(', ')}<br>`;
+                }
+
+                statsCard.innerHTML = statsHtml;
+                statsDiv.appendChild(statsCard);
+                container.appendChild(statsDiv);
+            }
+
+            // Quality metrics
+            if (insights.kvalitet) {
+                const qualityDiv = document.createElement('div');
+                qualityDiv.innerHTML = '<h4>Kvalitet podataka:</h4>';
+                const qualityCard = document.createElement('div');
+                qualityCard.className = 'insight-card';
+                qualityCard.innerHTML = `
+                    <strong>Potpunost:</strong> ${insights.kvalitet.potpunost}%<br>
+                    <strong>Jedinstveni redovi:</strong> ${insights.kvalitet.jedinstveni_redovi ? 'Da' : 'Ne'}
+                `;
+                qualityDiv.appendChild(qualityCard);
+                container.appendChild(qualityDiv);
+            }
+        }
+
+        // Test with sample data
+        async function testWithSampleData() {
+            const status = document.getElementById('sample-status');
+            status.className = 'status info';
+            status.innerHTML = '<div class="loading"></div> Generisanje primer podataka...';
+
+            try {
+                // Create sample CSV data
+                const sampleData = `ID,Ime,Prezime,Godine,Grad,Plata,Odeljenje
+1,Pera,Perić,30,Beograd,90000,IT
+2,Mika,Mikić,25,Novi Sad,75000,Marketing
+3,Zarko,Zarković,35,Niš,110000,Prodaja
+4,Jova,Jovanović,28,Kragujevac,85000,IT
+5,Steva,Stevanović,42,Subotica,120000,Menadžment`;
+
+                // Convert to base64
+                const base64 = btoa(unescape(encodeURIComponent(sampleData)));
+
+                // Send to API
+                const response = await fetch(`${API_BASE}/api/v1/datasets/insights`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        csv_data: base64,
+                        filename: 'sample_data.csv',
+                        language: 'sr'
+                    })
+                });
+
+                const insights = await response.json();
+
+                if (response.ok) {
+                    status.className = 'status success';
+                    status.innerHTML = `✅ Test uspešan! Generisani uvidi za ${insights.total_rows} redova`;
+
+                    // Display in sample results
+                    const sampleResults = document.getElementById('sample-status');
+                    displayInsights(insights, sampleResults.parentElement);
+                } else {
+                    throw new Error(insights.detail || `Greška ${response.status}`);
+                }
+            } catch (error) {
+                status.className = 'status error';
+                status.innerHTML = `❌ Greška: ${error.message}`;
+            }
+        }
+
+        // Load API statistics
+        async function loadStats() {
+            const results = document.getElementById('stats-results');
+            results.innerHTML = '<div class="loading"></div> Učitavanje...';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/stats`);
+                const stats = await response.json();
+
+                if (response.ok) {
+                    results.innerHTML = `
+                        <div class="insight-card">
+                            <h4>Statistike API-ja:</h4>
+                            <strong>Ukupno skupova podataka:</strong> ${stats.total_datasets}<br>
+                            <strong>Kategorije:</strong> ${stats.categories}<br>
+                            <strong>Ukupno redova:</strong> ${stats.total_rows.toLocaleString()}<br>
+                            <strong>Prosečno kolona:</strong> ${stats.average_columns.toFixed(1)}
+                        </div>
+                    `;
+                } else {
+                    throw new Error(`Greška ${response.status}`);
+                }
+            } catch (error) {
+                results.innerHTML = `<div class="status error">❌ Greška: ${error.message}</div>`;
+            }
+        }
+
+        // Auto-test health on load
+        window.addEventListener('load', function() {
+            setTimeout(testHealth, 500);
+        });
+    </script>
+</body>
+</html>

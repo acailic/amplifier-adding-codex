@@ -405,7 +405,7 @@ export const EnhancedBudgetChart: React.FC<EnhancedBudgetChartProps> = ({
   // Custom formatter for Serbian currency
   const serbianCurrencyFormatter = useCallback((value: number) => {
     return serbianNumberFormatter(value, { style: 'currency' });
-  }, [serbianCurrencyFormatter]);
+  }, []);
 
   // Custom tooltip for budget overview
   const OverviewTooltip = useCallback(({ active, payload }: any) => {

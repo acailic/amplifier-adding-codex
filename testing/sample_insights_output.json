@@ -1,0 +1,121 @@
+{
+  "total_rows": 10,
+  "total_columns": 6,
+  "memory_usage_mb": 0.0,
+  "columns": [
+    {
+      "naziv": "ID",
+      "original_name": "ID",
+      "tip": "int64",
+      "broj_vrednosti": 10,
+      "jedinstvene_vrednosti": 10,
+      "nedostajuce_vrednosti": 0,
+      "statistike": {
+        "minimum": 1.0,
+        "maksimum": 10.0,
+        "prosek": 5.5,
+        "medijana": 5.5
+      }
+    },
+    {
+      "naziv": "Ime",
+      "original_name": "Ime",
+      "tip": "object",
+      "broj_vrednosti": 10,
+      "jedinstvene_vrednosti": 10,
+      "nedostajuce_vrednosti": 0,
+      "primeri_vrednosti": [
+        "Ana",
+        "Marko",
+        "Petar",
+        "Jelena",
+        "Marija"
+      ]
+    },
+    {
+      "naziv": "Godine",
+      "original_name": "Godine",
+      "tip": "float64",
+      "broj_vrednosti": 9,
+      "jedinstvene_vrednosti": 9,
+      "nedostajuce_vrednosti": 1,
+      "statistike": {
+        "minimum": 22.0,
+        "maksimum": 45.0,
+        "prosek": 31.444444444444443,
+        "medijana": 30.0
+      }
+    },
+    {
+      "naziv": "Grad",
+      "original_name": "Grad",
+      "tip": "object",
+      "broj_vrednosti": 10,
+      "jedinstvene_vrednosti": 5,
+      "nedostajuce_vrednosti": 0,
+      "primeri_vrednosti": [
+        "Beograd",
+        "Novi Sad",
+        "Niš",
+        "Kragujevac",
+        "Subotica"
+      ]
+    },
+    {
+      "naziv": "Plata",
+      "original_name": "Plata",
+      "tip": "int64",
+      "broj_vrednosti": 10,
+      "jedinstvene_vrednosti": 10,
+      "nedostajuce_vrednosti": 0,
+      "statistike": {
+        "minimum": 65000.0,
+        "maksimum": 150000.0,
+        "prosek": 96000.0,
+        "medijana": 90000.0
+      }
+    },
+    {
+      "naziv": "Departman",
+      "original_name": "Departman",
+      "tip": "object",
+      "broj_vrednosti": 10,
+      "jedinstvene_vrednosti": 5,
+      "nedostajuce_vrednosti": 0,
+      "primeri_vrednosti": [
+        "IT",
+        "Marketing",
+        "Finansije",
+        "Prodaja",
+        "Menadžment"
+      ]
+    }
+  ],
+  "statistike": {
+    "numericke_kolone": [
+      "ID",
+      "Godine",
+      "Plata"
+    ],
+    "kategoricke_kolone": [
+      "Ime",
+      "Grad",
+      "Departman"
+    ],
+    "korelacije": {
+      "Godine ↔ Plata": 0.97
+    }
+  },
+  "nedostajuce_vrednosti": {
+    "Godine": 1
+  },
+  "kvalitet": {
+    "potpunost": 98.33,
+    "jedinstveni_redovi": 1
+  },
+  "metadata": {
+    "filename": "test_data.csv",
+    "language": "sr",
+    "processed_at": "2025-12-04T10:19:28.492975"
+  }
+}

@@ -845,6 +845,81 @@ This project has adopted the [Microsoft Open Source Code of Conduct](https://ope
 For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
 contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
 
+---
+
+## 🛍️ @acailic/vizualni-admin - NPM Package
+
+A comprehensive price visualization and analytics system for the Serbian market, now available as an NPM package.
+
+### 📦 Installation
+
+```bash
+npm install @acailic/vizualni-admin
+# or
+yarn add @acailic/vizualni-admin
+# or
+pnpm add @acailic/vizualni-admin
+```
+
+### 🚀 Quick Start
+
+```tsx
+import React from 'react';
+import { PriceDashboardWrapper, type PriceData } from '@acailic/vizualni-admin';
+
+const sampleData: PriceData[] = [
+  {
+    id: '1',
+    productNameSr: 'Laptop Pro',
+    price: 120000,
+    originalPrice: 140000,
+    currency: 'RSD',
+    categorySr: 'Elektronika',
+    retailerName: 'TechShop',
+    availability: 'in_stock',
+    timestamp: '2024-01-15T10:00:00Z'
+  },
+  // ... more data
+];
+
+function App() {
+  return (
+    <PriceDashboardWrapper data={sampleData} />
+  );
+}
+```
+
+### 📚 Documentation
+
+- **[Package Documentation](./README-PACKAGE.md)** - Complete API reference and usage guide
+- **[Examples](./examples/)** - Ready-to-use implementation examples
+- **[Live Demo](https://acailic.github.io/improvements-ampl/cene-demo)** - Interactive demo of all features
+
+### 🎨 Available Components
+
+- **PriceDashboardWrapper** - Complete dashboard with stats and charts
+- **PriceAnalyticsDashboard** - Advanced analytics with real-time alerts
+- **SimplePriceFilter** - Filter panel for price data
+- **Various Charts** - Line, bar, pie, heatmap, scatter, radar, and treemap charts
+
+### 🌍 Features
+
+- **Serbian Language Support** - Full localization (Latin & Cyrillic)
+- **Multiple Chart Types** - 8 different visualization types
+- **Real-time Updates** - Auto-refresh capabilities
+- **TypeScript Support** - Fully typed components
+- **Responsive Design** - Mobile-first approach
+- **Export Functionality** - CSV, JSON, Excel export options
+
+### 🔗 Links
+
+- [NPM Package](https://www.npmjs.com/package/@acailic/vizualni-admin)
+- [GitHub Repository](https://github.com/acailic/improvements-ampl)
+- [Documentation](./README-PACKAGE.md)
+- [Examples](./examples/index.md)
+
+---
+
 ## Trademarks
 
 This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft

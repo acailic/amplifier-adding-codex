@@ -9,17 +9,17 @@ with sample Serbian government datasets.
 import sys
 from pathlib import Path
 
-# Add the project root to the path
+# Add the project root to the path (must be before imports)
 script_dir = Path(__file__).parent
 project_root = script_dir.parents[3]
-sys.path.append(str(project_root))
+sys.path.insert(0, str(project_root))
 
-from amplifier.scenarios.dataset_validation.serbian_metadata_scorer import score_serbian_metadata
-from amplifier.scenarios.dataset_validation.serbian_quality_scorer import score_serbian_dataset_quality
-from amplifier.scenarios.dataset_validation.serbian_validators import SerbianDataValidator
-from amplifier.scenarios.dataset_validation.serbian_validators import is_serbian_municipality
-from amplifier.scenarios.dataset_validation.serbian_validators import validate_serbian_jmbg
-from amplifier.scenarios.dataset_validation.serbian_validators import validate_serbian_pib
+from amplifier.scenarios.dataset_validation.serbian_metadata_scorer import score_serbian_metadata  # noqa: E402
+from amplifier.scenarios.dataset_validation.serbian_quality_scorer import score_serbian_dataset_quality  # noqa: E402
+from amplifier.scenarios.dataset_validation.serbian_validators import SerbianDataValidator  # noqa: E402
+from amplifier.scenarios.dataset_validation.serbian_validators import is_serbian_municipality  # noqa: E402
+from amplifier.scenarios.dataset_validation.serbian_validators import validate_serbian_jmbg  # noqa: E402
+from amplifier.scenarios.dataset_validation.serbian_validators import validate_serbian_pib  # noqa: E402
 
 
 def test_serbian_validators():

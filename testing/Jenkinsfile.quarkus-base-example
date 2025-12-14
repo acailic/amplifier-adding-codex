@@ -1,0 +1,268 @@
+/**
+ * Jenkins Pipeline for Building Quarkus Base Docker Images
+ *
+ * Repository: claninfo-shared-lib
+ * Purpose: Build and publish Quarkus runtime base images with proper versioning
+ */
+
+@Library('shared-pipeline-library') _
+
+// Load the versioning library
+def versionLib = load 'jenkins-version-strategy.groovy'
+
+pipeline {
+    agent any
+
+    parameters {
+        choice(
+            name: 'VERSION_INCREMENT',
+            choices: ['patch', 'minor', 'major'],
+            description: 'Version increment type for manual releases'
+        )
+        booleanParam(
+            name: 'CREATE_RELEASE',
+            defaultValue: false,
+            description: 'Create a release tag after successful build'
+        )
+        string(
+            name: 'RELEASE_VERSION',
+            defaultValue: '',
+            description: 'Specific version for release (e.g., 1.2.3). Leave empty for auto-increment.'
+        )
+    }
+
+    environment {
+        DOCKER_REGISTRY = 'your-registry.example.com'
+        IMAGE_NAME = 'quarkus-base'
+        TAG_PREFIX = 'quarkus-base-v'
+        // IMAGE_VERSION will be set in Initialize stage
+    }
+
+    stages {
+        stage('Initialize') {
+            steps {
+                script {
+                    echo "════════════════════════════════════════════════════════════"
+                    echo "  Initializing Quarkus Base Image Build"
+                    echo "════════════════════════════════════════════════════════════"
+
+                    // Ensure we have latest git information
+                    sh 'git fetch --tags || true'
+
+                    // Determine version using our robust strategy
+                    def versionInfo = versionLib.determineImageVersion(
+                        env.TAG_PREFIX,
+                        env.BRANCH_NAME,
+                        env.BUILD_NUMBER
+                    )
+
+                    // Print version information
+                    versionLib.printVersionInfo(versionInfo)
+
+                    // Set environment variables for subsequent stages
+                    env.IMAGE_VERSION = versionInfo.version
+                    env.IS_RELEASE = versionInfo.isRelease.toString()
+                    env.VERSION_SOURCE = versionInfo.source
+                    env.DOCKER_TAGS = versionInfo.dockerTags.join(',')
+
+                    // Store version info for later stages
+                    currentBuild.description = "Version: ${env.IMAGE_VERSION}"
+
+                    // For release builds, handle version override
+                    if (params.CREATE_RELEASE && params.RELEASE_VERSION) {
+                        if (versionLib.isValidSemanticVersion(params.RELEASE_VERSION)) {
+                            env.IMAGE_VERSION = params.RELEASE_VERSION
+                            env.IS_RELEASE = 'true'
+                            env.DOCKER_TAGS = "${params.RELEASE_VERSION},latest"
+                            echo "Using manual release version: ${env.IMAGE_VERSION}"
+                        } else {
+                            error "Invalid RELEASE_VERSION: ${params.RELEASE_VERSION}. Must be semantic version (e.g., 1.2.3)"
+                        }
+                    }
+
+                    echo "════════════════════════════════════════════════════════════"
+                    echo "  Build will use VERSION: ${env.IMAGE_VERSION}"
+                    echo "  Docker tags: ${env.DOCKER_TAGS}"
+                    echo "════════════════════════════════════════════════════════════"
+                }
+            }
+        }
+
+        stage('Validate') {
+            steps {
+                script {
+                    echo "Validating environment and prerequisites..."
+
+                    // Validate Docker is available
+                    sh 'docker --version'
+
+                    // Validate git repository state
+                    sh 'git status'
+
+                    // Check if Dockerfile exists
+                    sh 'test -f Dockerfile || exit 1'
+
+                    echo "Validation completed successfully"
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    echo "Building Docker image: ${env.IMAGE_NAME}:${env.IMAGE_VERSION}"
+
+                    // Build the Docker image
+                    sh """
+                        docker build \
+                            --build-arg VERSION=${env.IMAGE_VERSION} \
+                            --build-arg BUILD_DATE=\$(date -u +'%Y-%m-%dT%H:%M:%SZ') \
+                            --build-arg VCS_REF=\$(git rev-parse --short HEAD) \
+                            -t ${env.DOCKER_REGISTRY}/${env.IMAGE_NAME}:${env.IMAGE_VERSION} \
+                            .
+                    """
+
+                    echo "Docker image built successfully"
+                }
+            }
+        }
+
+        stage('Tag Docker Image') {
+            steps {
+                script {
+                    echo "Tagging Docker image with all specified tags..."
+
+                    def tags = env.DOCKER_TAGS.split(',')
+                    tags.each { tag ->
+                        sh """
+                            docker tag \
+                                ${env.DOCKER_REGISTRY}/${env.IMAGE_NAME}:${env.IMAGE_VERSION} \
+                                ${env.DOCKER_REGISTRY}/${env.IMAGE_NAME}:${tag}
+                        """
+                        echo "Tagged: ${tag}"
+                    }
+                }
+            }
+        }
+
+        stage('Test Docker Image') {
+            steps {
+                script {
+                    echo "Testing Docker image..."
+
+                    // Basic smoke test - verify image can start
+                    sh """
+                        docker run --rm \
+                            ${env.DOCKER_REGISTRY}/${env.IMAGE_NAME}:${env.IMAGE_VERSION} \
+                            java -version
+                    """
+
+                    // Add more tests as needed
+                    echo "Image tests passed"
+                }
+            }
+        }
+
+        stage('Push Docker Image') {
+            when {
+                expression {
+                    // Push for all builds, but only to registry if conditions met
+                    return env.BRANCH_NAME == 'main' ||
+                           env.BRANCH_NAME == 'master' ||
+                           env.BRANCH_NAME.startsWith('release/') ||
+                           params.CREATE_RELEASE
+                }
+            }
+            steps {
+                script {
+                    echo "Pushing Docker image to registry..."
+
+                    // Login to Docker registry (credentials should be in Jenkins)
+                    withCredentials([usernamePassword(
+                        credentialsId: 'docker-registry-credentials',
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASS'
+                    )]) {
+                        sh "echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin ${env.DOCKER_REGISTRY}"
+                    }
+
+                    // Push all tags
+                    def tags = env.DOCKER_TAGS.split(',')
+                    tags.each { tag ->
+                        sh "docker push ${env.DOCKER_REGISTRY}/${env.IMAGE_NAME}:${tag}"
+                        echo "Pushed: ${tag}"
+                    }
+
+                    echo "All images pushed successfully"
+                }
+            }
+        }
+
+        stage('Create Release Tag') {
+            when {
+                expression {
+                    return params.CREATE_RELEASE && env.IS_RELEASE == 'true'
+                }
+            }
+            steps {
+                script {
+                    echo "Creating release tag..."
+
+                    // Ensure we have credentials for git push
+                    withCredentials([usernamePassword(
+                        credentialsId: 'git-credentials',
+                        usernameVariable: 'GIT_USER',
+                        passwordVariable: 'GIT_PASS'
+                    )]) {
+                        sh """
+                            git config user.email "jenkins@claninfo.ch"
+                            git config user.name "Jenkins CI"
+                        """
+
+                        versionLib.createReleaseTag(
+                            env.IMAGE_VERSION,
+                            env.TAG_PREFIX,
+                            "Release ${env.IMAGE_VERSION} - Build ${env.BUILD_NUMBER}"
+                        )
+                    }
+
+                    echo "Release tag created: ${env.TAG_PREFIX}${env.IMAGE_VERSION}"
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            script {
+                echo "════════════════════════════════════════════════════════════"
+                echo "  Build Successful!"
+                echo "  Version: ${env.IMAGE_VERSION}"
+                echo "  Tags: ${env.DOCKER_TAGS}"
+                if (params.CREATE_RELEASE) {
+                    echo "  Release tag: ${env.TAG_PREFIX}${env.IMAGE_VERSION}"
+                }
+                echo "════════════════════════════════════════════════════════════"
+            }
+        }
+
+        failure {
+            script {
+                echo "════════════════════════════════════════════════════════════"
+                echo "  Build Failed!"
+                echo "  Version: ${env.IMAGE_VERSION ?: 'Not determined'}"
+                echo "  Check logs for details"
+                echo "════════════════════════════════════════════════════════════"
+            }
+        }
+
+        always {
+            script {
+                // Cleanup Docker images from build agent
+                sh """
+                    docker rmi ${env.DOCKER_REGISTRY}/${env.IMAGE_NAME}:${env.IMAGE_VERSION} || true
+                """
+            }
+        }
+    }
+}

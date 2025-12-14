@@ -60,7 +60,7 @@ class DatasetAutomationManager:
         discovered_file = self.data_path / "discovered-datasets.json"
 
         if discovered_file.exists():
-            file_mtime = datetime.fromtimestamp(discovered_file.stat().st_mtime)
+            file_mtime = datetime.fromtimestamp(discovered_file.stat().st_mtime, tz=timezone.utc)
             # Assume all categories were updated at the same time
             for category in self.categories:
                 last_updates[category] = file_mtime
