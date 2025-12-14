@@ -3,7 +3,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'framer-motion';
-import { ArrowRight, TrendingUp, DollarSign, BarChart3 } from 'lucide-react';
+import { ArrowRight, TrendingUp, DollarSign, BarChart3, Palette, Sparkles } from 'lucide-react';
 
 // Sample data for Serbian regions
 const budgetData = [
@@ -84,7 +84,7 @@ export default function Home() {
           </div>
 
           {/* Quick Links Section */}
-          <section className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <section className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <Link href="/cene">
               <motion.div
                 whileHover={{ scale: 1.02, y: -2 }}
@@ -139,6 +139,32 @@ export default function Home() {
                 <p className="text-gray-600 text-sm">
                   Praćenje kvaliteta vazduha i PM čestica u realnom vremenu
                 </p>
+              </motion.div>
+            </Link>
+
+            <Link href="/gallery">
+              <motion.div
+                whileHover={{ scale: 1.02, y: -2 }}
+                whileTap={{ scale: 0.98 }}
+                className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg shadow-lg p-6 cursor-pointer border border-purple-200 hover:border-purple-400 hover:shadow-xl transition-all duration-200"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg flex items-center justify-center">
+                    <Sparkles className="w-6 h-6 text-white" />
+                  </div>
+                  <ArrowRight className="w-5 h-5 text-purple-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                  <Palette className="w-5 h-5 text-purple-600" />
+                  Constellation Gallery
+                </h3>
+                <p className="text-gray-600 text-sm">
+                  Museum-quality exhibition of code architecture as digital art
+                </p>
+                <div className="mt-3 flex items-center gap-2 text-xs text-purple-600 font-medium">
+                  <Sparkles className="w-3 h-3" />
+                  New Exhibition
+                </div>
               </motion.div>
             </Link>
           </section>

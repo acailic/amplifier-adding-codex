@@ -43,6 +43,7 @@ import {
   ArrowUp as ArrowUpIcon,
   ArrowDown as ArrowDownIcon,
   Minus as MinusIcon,
+  Image as ImageIcon,
 } from 'lucide-react';
 
 import {
@@ -62,6 +63,8 @@ import {
   SERBIAN_LOCALE,
   createSafeClassName,
 } from './utils';
+import { ExportManager } from './export';
+import { ExportMetadata, ExportJob } from './export/types';
 
 // Import components
 import PriceComparisonChart from './PriceComparisonChart';
@@ -97,6 +100,7 @@ const PriceDashboard: React.FC<PriceDashboardProps> = ({
   const [lastRefresh, setLastRefresh] = useState(new Date());
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [showExportGallery, setShowExportGallery] = useState(false);
   const [activeFilter, setActiveFilter] = useState<PriceFilter>({
     categories: [],
     retailers: [],
@@ -199,6 +203,49 @@ const PriceDashboard: React.FC<PriceDashboardProps> = ({
     };
   }, [data]);
 
+  // Create export metadata
+  const createExportMetadata = (): ExportMetadata => ({
+    id: `price_chart_${Date.now()}`,
+    title: localizeText('Price Analysis Dashboard', 'Анализа цена табла', locale),
+    description: localizeText(
+      'Comprehensive price analysis across retailers and categories',
+      'Комплексна анализа цена преко продаваца и категорија',
+      locale
+    ),
+    created: new Date().toISOString(),
+    modified: new Date().toISOString(),
+    dataSource: 'data.gov.rs cenovnici datasets',
+    dateRange: {
+      start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), // Last 30 days
+      end: new Date().toISOString(),
+    },
+    filters: {
+      categories: activeFilter.categories,
+      retailers: activeFilter.retailers,
+      priceRange: activeFilter.priceRange,
+    },
+    chartType: 'Price Dashboard',
+    visualizationConfig: {
+      dashboardStats,
+      filters: activeFilter,
+      locale,
+    },
+    copyright: `© ${new Date().getFullYear()} Digital Artifact Platform`,
+    license: 'Creative Commons Attribution-NonCommercial 4.0',
+    attribution: {
+      dataProvider: 'data.gov.rs',
+      visualizationEngine: 'Price Visualization System',
+      artist: 'Data Visualization Studio',
+    },
+    technical: {
+      software: 'Price Dashboard',
+      version: '1.0.0',
+      renderTime: Date.now(),
+      canvasSize: { width: 1920, height: 1080 },
+      colorSpace: 'sRGB',
+    },
+  });
+
   // Handle export
   const handleExport = (options: ExportOptions) => {
     if (onExport) {
@@ -207,6 +254,12 @@ const PriceDashboard: React.FC<PriceDashboardProps> = ({
       // Default CSV export
       exportToCSV(data, 'price-data');
     }
+  };
+
+  // Handle premium export completion
+  const handlePremiumExport = (job: ExportJob) => {
+    console.log('Premium export completed:', job);
+    // Could trigger notification, update UI, etc.
   };
 
   // Handle menu
@@ -335,6 +388,17 @@ const PriceDashboard: React.FC<PriceDashboardProps> = ({
               <MenuItem onClick={() => handleExport({ format: 'excel', includeImages: false, includeDescriptions: true, language: locale.language, currency: 'RSD' })}>
                 <DownloadIcon size={16} style={{ marginRight: 8 }} />
                 Export Excel
+              </MenuItem>
+              <Divider />
+              <MenuItem
+                onClick={() => {
+                  setShowExportGallery(true);
+                  handleMenuClose();
+                }}
+                sx={{ fontWeight: 'bold' }}
+              >
+                <ImageIcon size={16} style={{ marginRight: 8 }} />
+                {localizeText('Digital Art Gallery', 'Галерија дигиталне уметности', locale)}
               </MenuItem>
             </Menu>
           </Box>
@@ -549,6 +613,15 @@ const PriceDashboard: React.FC<PriceDashboardProps> = ({
       >
         <RefreshIcon className={loading ? 'animate-spin' : ''} />
       </Fab>
+
+      {/* Premium Export Gallery */}
+      <ExportManager
+        open={showExportGallery}
+        onClose={() => setShowExportGallery(false)}
+        chartData={data}
+        metadata={createExportMetadata()}
+        onExportComplete={handlePremiumExport}
+      />
     </Box>
   );
 };

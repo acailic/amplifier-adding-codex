@@ -73,6 +73,16 @@ codex-status                            # Show session status
 
 These shortcuts wrap MCP tool invocations for faster development workflows.
 
+### Context Window Guardrail
+
+Use the session monitor’s `context-help` command to see current token risk and get restart guidance:
+
+```bash
+uv run python -m amplifier.session_monitor.cli context-help
+```
+
+It reports estimated tokens, suggests whether to wrap up or restart, and prints a ready-to-copy handoff note for starting a fresh session without losing momentum.
+
 ## Architecture Overview
 
 ### Hook System Mapping

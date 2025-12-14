@@ -25,18 +25,18 @@
 default_profile = "fast"
 
 # Model configuration (equivalent to .claude/settings.json model settings)
-model = "gpt-5-codex"
+model = "gpt-5.1-codex-max"
 # provider = "anthropic"  # PLACEHOLDER: Verify with Codex CLI docs
-reasoning_effort = "medium"  # PLACEHOLDER: Verify with Codex CLI docs
+reasoning_effort = "high"  # PLACEHOLDER: Verify with Codex CLI docs
 
 # Approval policy for tool usage
 # Options: "on-request" (user approval), "never" (auto-approve), "always" (ask every time)
 # Equivalent to Claude Code's approval settings
-# approval_policy = "on-request"  # PLACEHOLDER: Verify with Codex CLI docs
+approval_policy = "never"  # PLACEHOLDER: Verify with Codex CLI docs
 
 # Sandbox mode for workspace access
 # Options: "workspace-write" (full access), "read-only" (limited access)
-# sandbox_mode = "workspace-write"  # PLACEHOLDER: Verify with Codex CLI docs
+sandbox_mode = "workspace-write"  # PLACEHOLDER: Verify with Codex CLI docs
 
 # Timeout settings (in seconds)
 startup_timeout_sec = 30

@@ -174,6 +174,25 @@ export interface ExportOptions {
   currency: 'RSD' | 'EUR' | 'both';
 }
 
+// Premium export options for digital artifacts
+export interface PremiumExportOptions extends ExportOptions {
+  quality: 'web' | 'social' | 'print' | 'gallery' | 'ultra';
+  formats: ('png' | 'jpg' | 'pdf' | 'svg')[];
+  aspectRatios: ('square' | 'vertical' | 'horizontal' | 'print')[];
+  watermark?: {
+    enabled: boolean;
+    type: 'subtle' | 'integrated' | 'corner' | 'none';
+    opacity: number;
+    text?: string;
+  };
+  edition?: {
+    number: number;
+    size: number;
+    signed: boolean;
+    certificate: boolean;
+  };
+}
+
 export interface ComponentProps {
   data: PriceData[] | PriceTrend[] | DiscountData[] | PriceHeatmapData[];
   loading?: boolean;

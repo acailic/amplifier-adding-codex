@@ -485,5 +485,63 @@ def list_sessions(clean: bool, verbose: bool):
         click.echo()
 
 
+@cli.command("context-help")
+@click.option("--workspace", help="Workspace identifier (auto-detect from cwd if not provided)")
+@click.option("--verbose", is_flag=True, help="Enable verbose logging")
+def context_help(workspace: str | None, verbose: bool):
+    """Show current token risk and concrete next steps to avoid context overflows."""
+    if verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
+
+    workspace_name = resolve_workspace_name(workspace)
+    tracker = TokenTracker()
+    usage = tracker.get_current_usage(workspace_name)
+
+    click.echo(click.style("Context window guardrail", fg="blue"))
+
+    if usage.source == "no_files":
+        click.echo("No session files found to estimate usage.")
+        click.echo("Actions:")
+        click.echo("1) Keep replies short and summarize progress.")
+        click.echo("2) If conversation feels long, start a fresh session with the handoff note below.")
+    else:
+        if usage.usage_pct >= 90:
+            status = ("CRITICAL", "red", "[CRITICAL]")
+        elif usage.usage_pct >= 80:
+            status = ("WARNING", "yellow", "[WARN]")
+        else:
+            status = ("OK", "green", "[OK]")
+
+        label, color, marker = status
+        click.echo(
+            click.style(
+                f"{marker} Status: {label} — {usage.estimated_tokens:,} tokens "
+                f"({usage.usage_pct:.1f}%, source: {usage.source})",
+                fg=color,
+            )
+        )
+        click.echo("Actions:")
+        if usage.usage_pct >= 90:
+            click.echo("1) Send a short wrap-up; avoid large diffs or logs.")
+            click.echo("2) Save/restore transcripts instead of reloading full history.")
+            click.echo("3) Start a fresh session using the handoff note below.")
+        elif usage.usage_pct >= 80:
+            click.echo("1) Keep responses terse and summarize instead of pasting full files.")
+            click.echo("2) Prefer file paths/diffs over entire file dumps.")
+            click.echo("3) Prepare to restart with the handoff note if the next reply is large.")
+        else:
+            click.echo("1) Stay concise to preserve headroom; avoid unnecessary large outputs.")
+            click.echo("2) If work will expand, pre-stage a handoff note for a clean restart.")
+
+    click.echo("\nHandoff note template (copy into a new session if restarting):")
+    click.echo(
+        "Task: <what you are doing now>\n"
+        "Recent progress: <one or two bullets of completed steps>\n"
+        "Open items: <bullets of what remains>\n"
+        "Key files: <paths>\n"
+        "Next command to run: <e.g., make check | uv run pytest ...>\n"
+    )
+
+
 if __name__ == "__main__":
     cli()

@@ -201,7 +201,7 @@ Create a minimal test config to isolate issues:
 
 ```toml
 # Save as .codex/test_config.toml
-model = "gpt-5-codex"
+model = "gpt-5.1-codex-max"
 
 [mcp_servers.amplifier_tasks]
 command = "uv"

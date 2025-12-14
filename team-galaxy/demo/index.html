@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team Galaxy - Transform Your Team into a Cultural Artifact</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/d3@7"></script>
+    <script src="https://unpkg.com/framer-motion@10"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #000;
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(ellipse at center, #0a0e27 0%, #000000 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stars {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-image:
+                radial-gradient(2px 2px at 20px 30px, #eee, transparent),
+                radial-gradient(2px 2px at 40px 70px, #ddd, transparent),
+                radial-gradient(1px 1px at 50px 50px, #fff, transparent),
+                radial-gradient(1px 1px at 80px 80px, #fff, transparent),
+                radial-gradient(2px 2px at 130px 40px, #eee, transparent);
+            background-repeat: repeat;
+            background-size: 200px 200px;
+            opacity: 0.5;
+            animation: drift 200s linear infinite;
+        }
+
+        @keyframes drift {
+            from { transform: translate(0, 0); }
+            to { transform: translate(-200px, -200px); }
+        }
+
+        .hero-content {
+            text-align: center;
+            z-index: 1;
+            max-width: 800px;
+            padding: 2rem;
+        }
+
+        .hero h1 {
+            font-size: clamp(2.5rem, 8vw, 5rem);
+            font-weight: 900;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(135deg, #FFD700, #FFA500, #FF6347);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.02em;
+            animation: glow 3s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from { filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.5)); }
+            to { filter: drop-shadow(0 0 30px rgba(255, 215, 0, 0.8)); }
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            color: #a0a0a0;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        .cta-container {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .cta-button {
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .cta-primary {
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            color: #000;
+        }
+
+        .cta-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(255, 215, 0, 0.3);
+        }
+
+        .cta-secondary {
+            background: transparent;
+            color: #FFD700;
+            border: 2px solid #FFD700;
+        }
+
+        .cta-secondary:hover {
+            background: rgba(255, 215, 0, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .features {
+            padding: 5rem 2rem;
+            background: linear-gradient(180deg, #000 0%, #0a0e27 50%, #000 100%);
+        }
+
+        .features-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .features h2 {
+            font-size: 3rem;
+            text-align: center;
+            margin-bottom: 3rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .feature-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 2rem;
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 215, 0, 0.3);
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #FFD700;
+        }
+
+        .feature-card p {
+            color: #a0a0a0;
+            line-height: 1.6;
+        }
+
+        .demo-section {
+            padding: 5rem 2rem;
+            background: #000;
+            text-align: center;
+        }
+
+        .demo-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .demo-container h2 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: #FFD700;
+        }
+
+        .demo-container p {
+            font-size: 1.25rem;
+            color: #a0a0a0;
+            margin-bottom: 3rem;
+        }
+
+        .demo-galaxy {
+            width: 100%;
+            max-width: 1200px;
+            height: 600px;
+            margin: 0 auto;
+            background: radial-gradient(ellipse at center, #0a0e27 0%, #000000 100%);
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .galaxy-svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .pricing {
+            padding: 5rem 2rem;
+            background: linear-gradient(180deg, #000 0%, #0a0e27 100%);
+        }
+
+        .pricing-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .pricing h2 {
+            font-size: 3rem;
+            text-align: center;
+            margin-bottom: 3rem;
+            color: #FFD700;
+        }
+
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .pricing-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 2rem;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .pricing-card.featured {
+            border-color: #FFD700;
+            background: rgba(255, 215, 0, 0.05);
+            transform: scale(1.05);
+        }
+
+        .pricing-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .pricing-card.featured:hover {
+            transform: scale(1.05) translateY(-5px);
+        }
+
+        .pricing-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #FFD700;
+        }
+
+        .pricing-card .price {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #fff;
+            margin-bottom: 0.5rem;
+        }
+
+        .pricing-card .price-period {
+            color: #a0a0a0;
+            margin-bottom: 2rem;
+        }
+
+        .pricing-features {
+            list-style: none;
+            margin-bottom: 2rem;
+        }
+
+        .pricing-features li {
+            padding: 0.5rem 0;
+            color: #a0a0a0;
+        }
+
+        .pricing-features li::before {
+            content: "✓ ";
+            color: #FFD700;
+            font-weight: bold;
+        }
+
+        .pricing-button {
+            width: 100%;
+            padding: 1rem;
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            color: #000;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .pricing-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 215, 0, 0.3);
+        }
+
+        .footer {
+            padding: 3rem 2rem;
+            background: #000;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .footer p {
+            color: #a0a0a0;
+            margin-bottom: 1rem;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 2rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .footer-links a {
+            color: #FFD700;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .footer-links a:hover {
+            color: #FFA500;
+        }
+
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .hero p {
+                font-size: 1rem;
+            }
+
+            .cta-container {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .cta-button {
+                width: 100%;
+                max-width: 300px;
+            }
+
+            .features h2,
+            .demo-container h2,
+            .pricing h2 {
+                font-size: 2rem;
+            }
+
+            .demo-galaxy {
+                height: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // Sample galaxy data for demo
+        const sampleGalaxy = {
+            id: 'demo-galaxy',
+            name: 'Innovation Labs',
+            classification: 'spiral',
+            totalMass: 8.5,
+            luminosity: 7.2,
+            age: 24,
+            diameter: 800,
+            stars: [
+                {
+                    id: 'star-1',
+                    name: 'Alex Chen',
+                    x: -100,
+                    y: 50,
+                    z: 0,
+                    archetype: {
+                        id: 'pioneer',
+                        name: 'Pioneer',
+                        color: '#FF6B6B'
+                    },
+                    magnitude: 8.2,
+                    spectralClass: 'O',
+                    radius: 15,
+                    temperature: 8500,
+                    contributions: {
+                        commits: 245,
+                        pullRequests: 89,
+                        reviews: 156,
+                        issues: 34,
+                        documentation: 67,
+                        mentorship: 45,
+                        codeQuality: 0.92,
+                        innovation: 0.88,
+                        reliability: 0.85,
+                        communication: 0.79
+                    },
+                    collaborationScore: 0.85,
+                    influenceRadius: 120,
+                    joinedDate: new Date('2020-03-15'),
+                    lastActive: new Date('2024-01-10'),
+                    languages: [
+                        { name: 'TypeScript', proficiency: 0.95, contribution: 40 },
+                        { name: 'React', proficiency: 0.92, contribution: 35 },
+                        { name: 'Python', proficiency: 0.85, contribution: 25 }
+                    ],
+                    expertise: [
+                        { domain: 'Frontend Architecture', level: 0.93, impact: 0.88 },
+                        { domain: 'Performance Optimization', level: 0.87, impact: 0.82 }
+                    ],
+                    constellation: 'pioneer',
+                    culturalRole: 'north_star',
+                    teamSpirit: 0.92
+                },
+                {
+                    id: 'star-2',
+                    name: 'Sarah Martinez',
+                    x: 50,
+                    y: -80,
+                    z: 10,
+                    archetype: {
+                        id: 'guardian',
+                        name: 'Guardian',
+                        color: '#4ECDC4'
+                    },
+                    magnitude: 7.5,
+                    spectralClass: 'G',
+                    radius: 14,
+                    temperature: 6200,
+                    contributions: {
+                        commits: 189,
+                        pullRequests: 67,
+                        reviews: 234,
+                        issues: 12,
+                        documentation: 145,
+                        mentorship: 178,
+                        codeQuality: 0.96,
+                        innovation: 0.45,
+                        reliability: 0.94,
+                        communication: 0.88
+                    },
+                    collaborationScore: 0.91,
+                    influenceRadius: 100,
+                    joinedDate: new Date('2019-08-20'),
+                    lastActive: new Date('2024-01-12'),
+                    languages: [
+                        { name: 'Java', proficiency: 0.94, contribution: 45 },
+                        { name: 'Kotlin', proficiency: 0.88, contribution: 30 },
+                        { name: 'TypeScript', proficiency: 0.82, contribution: 25 }
+                    ],
+                    expertise: [
+                        { domain: 'Security', level: 0.91, impact: 0.94 },
+                        { domain: 'Testing', level: 0.95, impact: 0.89 }
+                    ],
+                    constellation: 'guardian',
+                    culturalRole: 'veteran_pillar',
+                    teamSpirit: 0.95
+                },
+                {
+                    id: 'star-3',
+                    name: 'Marcus Johnson',
+                    x: -50,
+                    y: -120,
+                    z: -5,
+                    archetype: {
+                        id: 'connector',
+                        name: 'Connector',
+                        color: '#45B7D1'
+                    },
+                    magnitude: 7.8,
+                    spectralClass: 'B',
+                    radius: 13,
+                    temperature: 7200,
+                    contributions: {
+                        commits: 156,
+                        pullRequests: 78,
+                        reviews: 189,
+                        issues: 67,
+                        documentation: 89,
+                        mentorship: 134,
+                        codeQuality: 0.87,
+                        innovation: 0.72,
+                        reliability: 0.83,
+                        communication: 0.96
+                    },
+                    collaborationScore: 0.94,
+                    influenceRadius: 150,
+                    joinedDate: new Date('2020-01-10'),
+                    lastActive: new Date('2024-01-11'),
+                    languages: [
+                        { name: 'JavaScript', proficiency: 0.91, contribution: 35 },
+                        { name: 'Python', proficiency: 0.87, contribution: 30 },
+                        { name: 'Go', proficiency: 0.84, contribution: 35 }
+                    ],
+                    expertise: [
+                        { domain: 'DevOps', level: 0.88, impact: 0.85 },
+                        { domain: 'Team Building', level: 0.94, impact: 0.91 }
+                    ],
+                    constellation: 'connector',
+                    culturalRole: 'gravational_center',
+                    teamSpirit: 0.89
+                },
+                {
+                    id: 'star-4',
+                    name: 'Emily Watson',
+                    x: 120,
+                    y: 40,
+                    z: 15,
+                    archetype: {
+                        id: 'innovator',
+                        name: 'Innovator',
+                        color: '#96CEB4'
+                    },
+                    magnitude: 8.5,
+                    spectralClass: 'A',
+                    radius: 16,
+                    temperature: 7800,
+                    contributions: {
+                        commits: 278,
+                        pullRequests: 123,
+                        reviews: 98,
+                        issues: 89,
+                        documentation: 45,
+                        mentorship: 67,
+                        codeQuality: 0.84,
+                        innovation: 0.95,
+                        reliability: 0.76,
+                        communication: 0.82
+                    },
+                    collaborationScore: 0.78,
+                    influenceRadius: 110,
+                    joinedDate: new Date('2020-06-01'),
+                    lastActive: new Date('2024-01-13'),
+                    languages: [
+                        { name: 'Rust', proficiency: 0.89, contribution: 40 },
+                        { name: 'C++', proficiency: 0.85, contribution: 35 },
+                        { name: 'TypeScript', proficiency: 0.82, contribution: 25 }
+                    ],
+                    expertise: [
+                        { domain: 'Machine Learning', level: 0.92, impact: 0.87 },
+                        { domain: 'Algorithm Design', level: 0.88, impact: 0.84 }
+                    ],
+                    constellation: 'innovator',
+                    culturalRole: 'rising_star',
+                    teamSpirit: 0.81
+                },
+                {
+                    id: 'star-5',
+                    name: 'David Kim',
+                    x: -150,
+                    y: 20,
+                    z: -10,
+                    archetype: {
+                        id: 'specialist',
+                        name: 'Specialist',
+                        color: '#FFEAA7'
+                    },
+                    magnitude: 7.2,
+                    spectralClass: 'K',
+                    radius: 12,
+                    temperature: 5500,
+                    contributions: {
+                        commits: 198,
+                        pullRequests: 89,
+                        reviews: 234,
+                        issues: 23,
+                        documentation: 67,
+                        mentorship: 89,
+                        codeQuality: 0.91,
+                        innovation: 0.58,
+                        reliability: 0.89,
+                        communication: 0.75
+                    },
+                    collaborationScore: 0.82,
+                    influenceRadius: 90,
+                    joinedDate: new Date('2019-11-15'),
+                    lastActive: new Date('2024-01-09'),
+                    languages: [
+                        { name: 'Python', proficiency: 0.96, contribution: 50 },
+                        { name: 'SQL', proficiency: 0.91, contribution: 30 },
+                        { name: 'R', proficiency: 0.84, contribution: 20 }
+                    ],
+                    expertise: [
+                        { domain: 'Data Science', level: 0.95, impact: 0.91 },
+                        { domain: 'Analytics', level: 0.89, impact: 0.86 }
+                    ],
+                    constellation: 'specialist',
+                    culturalRole: 'constellation_anchor',
+                    teamSpirit: 0.87
+                }
+            ],
+            connections: [
+                {
+                    id: 'conn-1',
+                    sourceId: 'star-1',
+                    targetId: 'star-2',
+                    strength: 0.85,
+                    type: 'strong_gravity',
+                    frequency: 0.92,
+                    reciprocity: 0.87,
+                    energy: 0.78,
+                    duration: 1050,
+                    lastInteraction: new Date('2024-01-12'),
+                    projects: ['project-alpha', 'project-beta']
+                },
+                {
+                    id: 'conn-2',
+                    sourceId: 'star-1',
+                    targetId: 'star-3',
+                    strength: 0.72,
+                    type: 'quantum_entangle',
+                    frequency: 0.68,
+                    reciprocity: 0.75,
+                    energy: 0.91,
+                    duration: 980,
+                    lastInteraction: new Date('2024-01-11'),
+                    projects: ['project-gamma']
+                },
+                {
+                    id: 'conn-3',
+                    sourceId: 'star-2',
+                    targetId: 'star-5',
+                    strength: 0.88,
+                    type: 'tidal_force',
+                    frequency: 0.85,
+                    reciprocity: 0.91,
+                    energy: 0.67,
+                    duration: 1120,
+                    lastInteraction: new Date('2024-01-10'),
+                    projects: ['project-alpha', 'project-delta']
+                },
+                {
+                    id: 'conn-4',
+                    sourceId: 'star-3',
+                    targetId: 'star-4',
+                    strength: 0.79,
+                    type: 'gravitational_lens',
+                    frequency: 0.73,
+                    reciprocity: 0.68,
+                    energy: 0.83,
+                    duration: 890,
+                    lastInteraction: new Date('2024-01-13'),
+                    projects: ['project-beta']
+                },
+                {
+                    id: 'conn-5',
+                    sourceId: 'star-4',
+                    targetId: 'star-5',
+                    strength: 0.65,
+                    type: 'orbital_sync',
+                    frequency: 0.58,
+                    reciprocity: 0.82,
+                    energy: 0.72,
+                    duration: 750,
+                    lastInteraction: new Date('2024-01-09'),
+                    projects: ['project-gamma', 'project-delta']
+                }
+            ],
+            constellations: [],
+            nebulae: [
+                {
+                    id: 'nebula-1',
+                    type: 'stellar_nursery',
+                    x: 0,
+                    y: 0,
+                    radius: 100,
+                    density: 0.6,
+                    color: '#6366f1',
+                    description: 'Emerging talent area',
+                    represents: {
+                        domain: 'Machine Learning',
+                        description: 'New ML capabilities being developed',
+                        potential: 0.85,
+                        currentInvestment: 0.45,
+                        recommendations: ['Dedicated training programs', 'Cross-functional projects']
+                    },
+                    developers: ['star-4']
+                }
+            ],
+            blackHoles: [],
+            coreTemperature: 7200,
+            metallicity: 0.65,
+            spiralArms: [],
+            halo: {
+                radius: 500,
+                density: 0.3,
+                collaborators: [],
+                communities: [],
+                influence: 0.72,
+                reach: 15
+            },
+            formation: new Date('2019-01-01'),
+            evolution: [],
+            currentPhase: 'main_sequence'
+        };
+
+        // Simple demo visualization
+        function DemoGalaxy() {
+            const svgRef = useRef(null);
+
+            useEffect(() => {
+                const svg = d3.select(svgRef.current);
+                svg.selectAll('*').remove();
+
+                const width = 1200;
+                const height = 600;
+                const centerX = width / 2;
+                const centerY = height / 2;
+
+                // Add gradient definitions
+                const defs = svg.append('defs');
+
+                // Background gradient
+                const bgGradient = defs.append('radialGradient')
+                    .attr('id', 'bgGradient');
+                bgGradient.append('stop')
+                    .attr('offset', '0%')
+                    .attr('stop-color', '#0a0e27');
+                bgGradient.append('stop')
+                    .attr('offset', '100%')
+                    .attr('stop-color', '#000000');
+
+                // Glow filter
+                const glowFilter = defs.append('filter')
+                    .attr('id', 'glow');
+                glowFilter.append('feGaussianBlur')
+                    .attr('stdDeviation', 3)
+                    .attr('result', 'coloredBlur');
+                glowFilter.append('feMerge')
+                    .selectAll('feMergeNode')
+                    .data(['coloredBlur', 'SourceGraphic'])
+                    .enter()
+                    .append('feMergeNode')
+                    .attr('in', d => d);
+
+                // Background
+                svg.append('rect')
+                    .attr('width', width)
+                    .attr('height', height)
+                    .attr('fill', 'url(#bgGradient)');
+
+                // Draw connections
+                const connectionGroup = svg.append('g')
+                    .attr('class', 'connections');
+
+                sampleGalaxy.connections.forEach(conn => {
+                    const source = sampleGalaxy.stars.find(s => s.id === conn.sourceId);
+                    const target = sampleGalaxy.stars.find(s => s.id === conn.targetId);
+
+                    if (source && target) {
+                        connectionGroup.append('line')
+                            .attr('x1', centerX + source.x)
+                            .attr('y1', centerY + source.y)
+                            .attr('x2', centerX + target.x)
+                            .attr('y2', centerY + target.y)
+                            .attr('stroke', '#4a5568')
+                            .attr('stroke-width', conn.strength * 3)
+                            .attr('opacity', conn.strength * 0.5)
+                            .attr('stroke-dasharray', conn.type === 'quantum_entangle' ? '5,5' : '0');
+                    }
+                });
+
+                // Draw nebula
+                const nebulaGroup = svg.append('g')
+                    .attr('class', 'nebulae');
+
+                sampleGalaxy.nebulae.forEach(nebula => {
+                    nebulaGroup.append('circle')
+                        .attr('cx', centerX + nebula.x)
+                        .attr('cy', centerY + nebula.y)
+                        .attr('r', nebula.radius)
+                        .attr('fill', nebula.color)
+                        .attr('opacity', 0.1);
+                });
+
+                // Draw stars
+                const starGroup = svg.append('g')
+                    .attr('class', 'stars');
+
+                sampleGalaxy.stars.forEach(star => {
+                    const g = starGroup.append('g')
+                        .attr('transform', `translate(${centerX + star.x}, ${centerY + star.y})`);
+
+                    // Star glow
+                    g.append('circle')
+                        .attr('r', star.radius * 2)
+                        .attr('fill', star.archetype.color)
+                        .attr('opacity', 0.2)
+                        .filter('url(#glow)');
+
+                    // Star body
+                    g.append('circle')
+                        .attr('r', star.radius)
+                        .attr('fill', star.archetype.color)
+                        .attr('opacity', 0.9);
+
+                    // Star core
+                    g.append('circle')
+                        .attr('r', star.radius * 0.3)
+                        .attr('fill', '#ffffff')
+                        .attr('opacity', 0.9);
+
+                    // Star label
+                    g.append('text')
+                        .attr('y', star.radius + 20)
+                        .attr('text-anchor', 'middle')
+                        .attr('fill', '#ffffff')
+                        .attr('font-size', '12px')
+                        .attr('font-family', 'Arial, sans-serif')
+                        .text(star.name);
+                });
+
+                // Add pulsing animation
+                starGroup.selectAll('circle')
+                    .filter((d, i, nodes) => i % 3 === 0) // Every third star
+                    .style('animation', 'pulse 2s ease-in-out infinite');
+
+            }, []);
+
+            return (
+                <div className="demo-galaxy">
+                    <svg
+                        ref={svgRef}
+                        className="galaxy-svg"
+                        viewBox="0 0 1200 600"
+                        preserveAspectRatio="xMidYMid meet"
+                    />
+                </div>
+            );
+        }
+
+        function App() {
+            return (
+                <div>
+                    {/* Hero Section */}
+                    <section className="hero">
+                        <div className="stars"></div>
+                        <div className="hero-content">
+                            <h1>Team Galaxy</h1>
+                            <p>
+                                Transform your team analytics into beautiful cultural artifacts that
+                                celebrate collaboration, diversity, and shared achievements
+                            </p>
+                            <div className="cta-container">
+                                <button className="cta-button cta-primary">
+                                    🚀 Create Your Galaxy
+                                </button>
+                                <button className="cta-button cta-secondary">
+                                    🎨 View Gallery
+                                </button>
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* Features Section */}
+                    <section className="features">
+                        <div className="features-container">
+                            <h2>Why Team Galaxy?</h2>
+                            <div className="features-grid">
+                                <div className="feature-card">
+                                    <div className="feature-icon">🌟</div>
+                                    <h3>Each Developer a Star</h3>
+                                    <p>
+                                        Visualize every team member as a unique star with properties
+                                        based on their contributions, skills, and collaboration patterns
+                                    </p>
+                                </div>
+                                <div className="feature-card">
+                                    <div className="feature-icon">🔗</div>
+                                    <h3>Gravitational Connections</h3>
+                                    <p>
+                                        See how team members interact through gravitational forces that
+                                        represent collaboration strength and patterns
+                                    </p>
+                                </div>
+                                <div className="feature-card">
+                                    <div className="feature-icon">🎭</div>
+                                    <h3>Archetype Constellations</h3>
+                                    <p>
+                                        Discover team dynamics through visual patterns that reveal
+                                        roles, relationships, and cultural identity
+                                    </p>
+                                </div>
+                                <div className="feature-card">
+                                    <div className="feature-icon">🖼️</div>
+                                    <h3>Museum-Quality Art</h3>
+                                    <p>
+                                        Create gallery-worthy pieces that teams are proud to display
+                                        as symbols of their collective identity
+                                    </p>
+                                </div>
+                                <div className="feature-card">
+                                    <div className="feature-icon">📊</div>
+                                    <h3>Cultural Insights</h3>
+                                    <p>
+                                        Gain deep understanding of team culture, diversity, and
+                                        growth opportunities through beautiful visualizations
+                                    </p>
+                                </div>
+                                <div className="feature-card">
+                                    <div className="feature-icon">🏆</div>
+                                    <h3>Team Pride Building</h3>
+                                    <p>
+                                        Foster team spirit and shared identity through a visual
+                                        celebration of your collective journey
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* Demo Section */}
+                    <section className="demo-section">
+                        <div className="demo-container">
+                            <h2>See Your Team Come to Life</h2>
+                            <p>
+                                This demo galaxy represents a real team with their unique dynamics,
+                                collaborations, and cultural patterns
+                            </p>
+                            <DemoGalaxy />
+                        </div>
+                    </section>
+
+                    {/* Pricing Section */}
+                    <section className="pricing">
+                        <div className="pricing-container">
+                            <h2>Choose Your Constellation</h2>
+                            <div className="pricing-grid">
+                                <div className="pricing-card">
+                                    <h3>Digital Galaxy</h3>
+                                    <div className="price">Free</div>
+                                    <div className="price-period">Forever</div>
+                                    <ul className="pricing-features">
+                                        <li>Interactive web visualization</li>
+                                        <li>Basic archetype analysis</li>
+                                        <li>Team constellation patterns</li>
+                                        <li>Monthly updates</li>
+                                        <li>Share with team</li>
+                                    </ul>
+                                    <button className="pricing-button">Get Started</button>
+                                </div>
+                                <div className="pricing-card featured">
+                                    <h3>Premium Portrait</h3>
+                                    <div className="price">$299</div>
+                                    <div className="price-period">one-time</div>
+                                    <ul className="pricing-features">
+                                        <li>Everything in Digital</li>
+                                        <li>High-resolution printable art</li>
+                                        <li>Museum-quality frame options</li>
+                                        <li>Custom constellation names</li>
+                                        <li>Physical shipping worldwide</li>
+                                        <li>Certificate of authenticity</li>
+                                        <li>AR viewing experience</li>
+                                    </ul>
+                                    <button className="pricing-button">Order Portrait</button>
+                                </div>
+                                <div className="pricing-card">
+                                    <h3>Enterprise Constellation</h3>
+                                    <div className="price">$999</div>
+                                    <div className="price-period">per month</div>
+                                    <ul className="pricing-features">
+                                        <li>Everything in Premium</li>
+                                        <li>Multi-team comparison</li>
+                                        <li>Historical evolution timeline</li>
+                                        <li>Advanced analytics dashboard</li>
+                                        <li>Custom integrations</li>
+                                        <li>Team consulting</li>
+                                        <li>White-label options</li>
+                                    </ul>
+                                    <button className="pricing-button">Contact Sales</button>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* Footer */}
+                    <footer className="footer">
+                        <div className="footer-content">
+                            <p>© 2024 Team Galaxy. Transforming teams into cosmic art.</p>
+                            <div className="footer-links">
+                                <a href="#">About</a>
+                                <a href="#">Gallery</a>
+                                <a href="#">API</a>
+                                <a href="#">Support</a>
+                                <a href="#">Privacy</a>
+                            </div>
+                        </div>
+                    </footer>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+
+        // Add CSS animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes pulse {
+                0%, 100% { opacity: 1; transform: scale(1); }
+                50% { opacity: 0.8; transform: scale(1.1); }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
